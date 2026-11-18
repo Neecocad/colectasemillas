@@ -31,7 +31,7 @@
 const SPREADSHEET_ID = '1CuRf2aO6EklG0IUOTHKdSmF0IP4IS1-1iw2PqtNxIeU';
 
 // Carpeta "BD_Colecta de semillas" (unidad compartida VIVERO 2026). Dentro se
-// crea sola la carpeta de fotografías y, dentro de ella, una por fecha.
+// crea sola la carpeta de fotografías y, dentro de ella, una por fecha y faena.
 const CARPETA_BD_ID = '1oBUJN5G3MpZLwHg74JM0deOOyUY6w7hd';
 const CARPETA_FOTOS = 'Fotografías';
 

@@ -76,7 +76,7 @@ textarea { resize: vertical; }
 .errores ul { margin: 6px 0 0; padding-left: 20px; }
 
 /* ---------- Lista desplegable con búsqueda ---------- */
-.combo { position: relative; }
+.combo { position: relative; scroll-margin-top: calc(130px + env(safe-area-inset-top)); }
 .combo input { padding-right: 40px; }
 .combo-btn {
   position: absolute; right: 1px; top: 1px; bottom: 1px; width: 38px; border: none; background: transparent;
@@ -88,10 +88,12 @@ textarea { resize: vertical; }
 }
 .combo-lista {
   position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30;
-  max-height: 260px; overflow-y: auto; margin: 0; padding: 4px 0; list-style: none;
+  max-height: min(320px, 45vh); overflow-y: auto; margin: 0; padding: 4px 0; list-style: none;
+  /* Deslizar dentro de la lista la recorre a ella, no a la página. */
+  overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
   background: #fff; border: 1px solid var(--borde); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
 }
-.combo-lista li { padding: 10px 12px; cursor: pointer; font-size: .95rem; }
+.combo-lista li { padding: 12px; cursor: pointer; font-size: .95rem; border-bottom: 1px solid #f0f2ec; }
 .combo-lista li.activo, .combo-lista li:hover { background: var(--verde-50); }
 .combo-lista li.elegido { font-weight: 700; color: var(--verde); }
 .combo-lista li.combo-vacio { color: var(--gris); font-style: italic; cursor: default; background: none; font-size: .85rem; }

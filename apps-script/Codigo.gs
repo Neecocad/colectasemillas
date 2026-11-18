@@ -3,7 +3,7 @@
  *
  * Recibe las colectas que envía la app del celular (botón "Sincronizar") y:
  *   1. guarda la fotografía en la unidad compartida, en una carpeta por fecha
- *      de colecta:  BD_Colecta de semillas / Fotografías / AAAAMMDD /
+ *      de colecta y faena:  BD_Colecta de semillas / Fotografías / AAAAMMDD_Faena /
  *   2. escribe (o actualiza) una fila por colecta en la hoja "Colectas" de la
  *      planilla BD_Colectasemillas.
  *
@@ -36,7 +36,7 @@ const CARPETA_BD_ID = '1oBUJN5G3MpZLwHg74JM0deOOyUY6w7hd';
 const CARPETA_FOTOS = 'Fotografías';
 
 const HOJA = 'Colectas';
-const VERSION_SCRIPT = 'v1';
+const VERSION_SCRIPT = 'v2';
 
 // Columnas de la hoja. Las 18 primeras son las de la ficha de colecta, en el
 // mismo orden que el Excel de la app (js/catalog.js → COLUMNAS). Las que siguen
@@ -88,7 +88,7 @@ function doPost(e) {
     const c = payload.colecta;
     if (!c || !c.record_id) return _json({ status: 'error', mensaje: 'Falta la colecta o su record_id' });
 
-    const carpeta = _carpetaDelDia(c.fecha);
+    const carpeta = _carpetaDelDia(c.fecha, c.faena);
     const foto = _guardarFoto(carpeta, c.foto, c.foto_nombre);
     const fila = _escribirFila(c, payload.version_app, foto.url);
     return _json({ status: 'ok', fila: fila, foto_url: foto.url, carpeta: carpeta.getName(), version_script: VERSION_SCRIPT });
@@ -181,12 +181,16 @@ function _filaDeId(sh, id) {
 
 // ---------- Fotos ----------
 
-// BD_Colecta de semillas / Fotografías / AAAAMMDD (fecha de la colecta).
-function _carpetaDelDia(fechaIso) {
+// BD_Colecta de semillas / Fotografías / AAAAMMDD_Faena  (p. ej. 20261118_Santiago Solar).
+// La fecha va primero para que, ordenadas por nombre, las carpetas queden en
+// orden cronológico; la faena permite ubicar de un vistazo dónde se colectó.
+function _carpetaDelDia(fechaIso, faena) {
   const base = DriveApp.getFolderById(CARPETA_BD_ID);
   const fotos = _subcarpeta(base, CARPETA_FOTOS);
   const dia = String(fechaIso || '').replace(/-/g, '') || 'sin_fecha';
-  return _subcarpeta(fotos, dia);
+  // Se quitan caracteres que confunden en nombres de carpeta (/ \ : * ? " < > |).
+  const nombreFaena = String(faena || 'Sin faena').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim();
+  return _subcarpeta(fotos, dia + '_' + nombreFaena);
 }
 
 function _subcarpeta(padre, nombre) {

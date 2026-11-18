@@ -10,7 +10,9 @@
 // distinto en cada navegador (en iPhone casi no filtra) y no impide escribir
 // valores que no están en la lista.
 
-const MAX_VISIBLES = 100;
+// Tope de opciones dibujadas a la vez. Alcanza para las 407 especies completas,
+// así la lista se puede recorrer deslizando el dedo sin escribir nada.
+const MAX_VISIBLES = 1000;
 
 export function normalizar(s) {
   return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
@@ -47,22 +49,32 @@ export class Combobox {
     this.lista.setAttribute('role', 'listbox');
     wrap.appendChild(this.lista);
 
-    input.addEventListener('focus', () => this.abrir());
-    input.addEventListener('click', () => this.abrir());
+    input.addEventListener('focus', () => { this.abrir(true); this.acomodar(wrap); });
+    input.addEventListener('click', () => { if (this.lista.classList.contains('hidden')) this.abrir(true); });
     input.addEventListener('input', () => { this.activo = -1; this.abrir(); });
     input.addEventListener('keydown', (e) => this.tecla(e));
     input.addEventListener('blur', () => this.confirmar());
-    // pointerdown + preventDefault: el campo no pierde el foco antes de elegir.
-    this.lista.addEventListener('pointerdown', (e) => {
+
+    // En el celular hay que distinguir "deslizar para recorrer la lista" de
+    // "tocar una opción". Por eso la opción se elige con `click`, que el
+    // navegador solo dispara con un toque completo (no al deslizar). Y se
+    // cancela el `mousedown` para que el campo no pierda el foco (y la lista
+    // no se cierre) justo antes de ese click.
+    const mantenerFoco = (e) => e.preventDefault();
+    this.lista.addEventListener('mousedown', mantenerFoco);
+    this.btn.addEventListener('mousedown', mantenerFoco);
+    this.lista.addEventListener('click', (e) => {
       const li = e.target.closest('li[data-valor]');
-      e.preventDefault();
       if (li) this.elegir(li.dataset.valor);
     });
-    this.btn.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
+    this.btn.addEventListener('click', () => {
       if (this.input.disabled) return;
-      if (this.lista.classList.contains('hidden')) { this.input.focus(); this.abrir(true); }
-      else this.cerrar();
+      if (this.lista.classList.contains('hidden')) {
+        if (document.activeElement === this.input) this.abrir(true);
+        else this.input.focus(); // el focus abre la lista completa
+      } else {
+        this.cerrar();
+      }
     });
   }
 
@@ -99,8 +111,21 @@ export class Combobox {
       li.textContent = `… y ${ops.length - MAX_VISIBLES} más: escribe para filtrar`;
       this.lista.appendChild(li);
     }
+    const estabaCerrada = this.lista.classList.contains('hidden');
     this.lista.classList.remove('hidden');
     this.input.setAttribute('aria-expanded', 'true');
+    // Al abrir, la lista parte mostrando la opción ya elegida (si hay una).
+    if (estabaCerrada) {
+      const elegido = this.lista.querySelector('li.elegido');
+      this.lista.scrollTop = elegido ? elegido.offsetTop - 40 : 0;
+    }
+  }
+
+  // En el celular, el teclado tapa media pantalla: se sube el campo hasta
+  // arriba para que la lista quede visible debajo de él.
+  acomodar(wrap) {
+    if (!window.matchMedia('(pointer: coarse)').matches) return;
+    setTimeout(() => wrap.scrollIntoView({ block: 'start', behavior: 'smooth' }), 350);
   }
 
   cerrar() {

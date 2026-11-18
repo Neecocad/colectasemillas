@@ -29,7 +29,8 @@ terreno, sin señal, en celulares. Sigue la estructura de
   el nombre común es único (hay nombres comunes compartidos por varias especies).
 - Listas encadenadas Región → Provincia → Comuna desde `datos/Regiones_provincias_comunas.xlsx`.
 - La etiqueta de la foto va **dibujada sobre los píxeles** (Canvas), no en EXIF:
-  «Colecta de semillas», fecha y coordenadas.
+  «Colecta de semillas», fecha, coordenadas, cuenca, provincia y comuna (se
+  re-dibuja al guardar).
 - UTM con huso **19S fijo** (ver README).
 - `js/catalogos-datos.js` es generado: se cambia la planilla en `datos/` y se
   corre `tools/generar_catalogos.py`, nunca se edita a mano.
@@ -41,7 +42,7 @@ terreno, sin señal, en celulares. Sigue la estructura de
   `js/app.js`.
 - Sincronización: `js/sync.js` envía **una colecta por llamada** (con foto) a
   `apps-script/Codigo.gs`; upsert por "ID colecta", foto idempotente por nombre,
-  fotos en `BD_Colecta de semillas/Fotografías/AAAAMMDD` (fecha de colecta).
+  fotos en `BD_Colecta de semillas/Fotografías/AAAAMMDD_Faena` (fecha de colecta + faena).
 - Cambiar `apps-script/Codigo.gs` no basta: hay que pegarlo en el editor de
   Google y publicar una **nueva versión** de la implementación existente
   (nunca una implementación nueva: cambia la URL). Recordarlo siempre.

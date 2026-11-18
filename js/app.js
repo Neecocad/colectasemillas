@@ -11,7 +11,7 @@ import {
   MOMENTOS_COLECTA, ORIGENES_SEMILLA, ESPECIES, CUENCAS, TERRITORIO,
 } from './catalog.js';
 
-const VERSION = 'v4';
+const VERSION = 'v5';
 
 const $ = (id) => document.getElementById(id);
 const form = $('form-colecta');
@@ -112,6 +112,7 @@ function setupTerritorio() {
       cbProvincia.fijar('');
       cbComuna.fijar('');
       actualizarTerritorio();
+      reetiquetar();
     },
   });
   cbProvincia = new Combobox($('f-provincia'), {
@@ -119,10 +120,12 @@ function setupTerritorio() {
     onCambio: () => {
       cbComuna.fijar('');
       actualizarTerritorio();
+      reetiquetar();
     },
   });
   cbComuna = new Combobox($('f-comuna'), {
     opciones: () => (TERRITORIO[cbRegion.valor] || {})[cbProvincia.valor] || [],
+    onCambio: () => reetiquetar(),
   });
 }
 
@@ -152,7 +155,7 @@ let cbCuenca, toggleCuencaOtro;
 function setupCuenca() {
   cbCuenca = new Combobox($('f-cuenca'), {
     opciones: () => [...CUENCAS, OPCION_OTRO],
-    onCambio: () => toggleCuencaOtro(),
+    onCambio: () => { toggleCuencaOtro(); reetiquetar(); },
   });
   toggleCuencaOtro = wireOtro('cuenca', () => cbCuenca.valor);
 }
@@ -211,12 +214,37 @@ function fechaHora(d) {
   return `${p(d.getDate())}-${p(d.getMonth() + 1)}-${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+// Lo que dice la etiqueta. Cuenca, provincia y comuna se leen del formulario en
+// el momento de dibujar; si aún no se eligen aparece "—", y la etiqueta se
+// vuelve a dibujar cuando se completan y, en todo caso, al guardar.
 function lineasEtiqueta() {
+  const o = (v) => v || '—';
   return [
     PROYECTO.nombre,
     `Fecha: ${fechaHora(foto.tomada)}`,
     `UTM ${punto.huso}: ${punto.este} E · ${punto.norte} N`,
+    `Cuenca: ${o(valorOtro(cbCuenca.valor, 'cuenca_otro'))}`,
+    `Provincia: ${o(cbProvincia.valor)} · Comuna: ${o(cbComuna.valor)}`,
   ];
+}
+
+// Corta una línea en varias para que quepa en `ancho` (por palabras).
+function cortarLinea(ctx, texto, ancho) {
+  const palabras = texto.split(' ');
+  const out = [];
+  let actual = '';
+  for (const p of palabras) {
+    const prueba = actual ? `${actual} ${p}` : p;
+    if (actual && ctx.measureText(prueba).width > ancho) { out.push(actual); actual = p; }
+    else actual = prueba;
+  }
+  if (actual) out.push(actual);
+  return out;
+}
+
+// Re-dibuja la etiqueta si ya hay foto (p. ej. al cambiar cuenca o comuna).
+function reetiquetar() {
+  if (foto && punto) etiquetarFoto().catch(() => {});
 }
 
 function cargarImagen(archivo) {
@@ -240,16 +268,20 @@ async function etiquetarFoto() {
   const ctx = canvas.getContext('2d');
   ctx.drawImage(img, 0, 0, w, h);
 
-  const lineas = lineasEtiqueta();
-  // Letra proporcional a la foto, achicada hasta que la línea más larga quepa.
-  let fs = Math.max(16, Math.round(Math.min(w, h) * 0.04));
+  const textos = lineasEtiqueta();
+  // Letra proporcional a la foto, achicada hasta que la línea más larga quepa,
+  // pero sin bajar de un mínimo legible: lo que igual no quepa (p. ej. una
+  // cuenca de nombre largo) se corta en dos líneas.
+  let fs = Math.max(16, Math.round(Math.min(w, h) * 0.038));
+  const fsMin = Math.max(12, Math.round(Math.min(w, h) * 0.026));
   const anchoMax = (t) => {
     ctx.font = `bold ${t}px sans-serif`;
-    return Math.max(...lineas.map((l) => ctx.measureText(l).width));
+    return Math.max(...textos.map((l) => ctx.measureText(l).width));
   };
-  while (fs > 10 && anchoMax(fs) > w - fs * 2) fs -= 1;
+  while (fs > fsMin && anchoMax(fs) > w - fs * 2) fs -= 1;
   ctx.font = `bold ${fs}px sans-serif`;
   const pad = Math.round(fs * 0.6);
+  const lineas = textos.flatMap((l) => cortarLinea(ctx, l, w - pad * 2));
   const altoLinea = Math.round(fs * 1.35);
   const altoCaja = altoLinea * lineas.length + pad * 2;
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -355,6 +387,14 @@ async function guardar(e) {
   if (faltan.length) {
     faltan[0].el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     toast(`Faltan ${faltan.length} dato(s) por completar`);
+    return;
+  }
+  // La etiqueta se dibuja de nuevo con los datos definitivos (cuenca, provincia,
+  // comuna), por si se cambiaron después de tomar la foto.
+  try {
+    await etiquetarFoto();
+  } catch (err) {
+    toast('No se pudo preparar la foto: ' + err.message, 5000);
     return;
   }
 
@@ -630,6 +670,7 @@ function init() {
   form.addEventListener('input', (e) => e.target.classList.remove('invalido'));
   form.addEventListener('change', (e) => e.target.classList.remove('invalido'));
 
+  campo('cuenca_otro').addEventListener('change', reetiquetar);
   $('btn-punto').addEventListener('click', tomarPunto);
   $('f-foto').addEventListener('change', alElegirFoto);
   $('btn-quitar-foto').addEventListener('click', quitarFoto);

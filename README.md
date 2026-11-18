@@ -17,7 +17,7 @@ compartida VIVERO 2026, y las fotos quedan en Drive ordenadas por fecha.
 
 ```
 Celular ──▶ Apps Script (Web App /exec) ──▶ BD_Colectasemillas, hoja "Colectas"
-                                         └─▶ BD_Colecta de semillas / Fotografías / AAAAMMDD /
+                                         └─▶ BD_Colecta de semillas / Fotografías / AAAAMMDD_Faena /
 ```
 
 - **Instalación del script:** [`apps-script/COMO-INSTALAR.md`](apps-script/COMO-INSTALAR.md).
@@ -29,8 +29,10 @@ Celular ──▶ Apps Script (Web App /exec) ──▶ BD_Colectasemillas, hoja
 - **Sin duplicados:** la fila se busca por "ID colecta" y la foto por su nombre
   dentro de su carpeta. Reenviar actualiza la fila existente en vez de crear
   otra.
-- **Fotos por fecha:** se guardan en `Fotografías/AAAAMMDD`, según la **fecha de
-  la colecta**, por ejemplo `20261118`. En la planilla, el nombre de la foto es
+- **Fotos por fecha y faena:** se guardan en `Fotografías/AAAAMMDD_Faena`, según
+  la **fecha de la colecta** y su faena, por ejemplo `20261118_Santiago Solar`.
+  La fecha va primero para que, al ordenar por nombre, las carpetas queden en
+  orden cronológico. En la planilla, el nombre de la foto es
   un enlace al archivo.
 - **Hoja "Colectas":** tiene las 18 columnas de la ficha y, al final, columnas
   de control: huso, latitud/longitud, precisión GPS, hora de la foto, fecha de
@@ -94,6 +96,10 @@ mayúsculas ni las tildes, y se busca en cualquier parte del texto ("macro"
 encuentra *Sophora macrocarpa*). Solo se aceptan valores de la lista: si se
 escribe algo que no está, el campo se vacía al salir.
 
+Al tocar el campo, la lista se abre completa sin necesidad de escribir. Se
+recorre deslizando el dedo hacia arriba o hacia abajo, y se elige tocando una
+opción. Deslizar no elige nada: solo un toque completo selecciona.
+
 ### Fotografía
 
 La etiqueta se dibuja **sobre la imagen** (no en los metadatos, que WhatsApp y
@@ -103,7 +109,14 @@ otras apps borran) e incluye:
 Colecta de semillas
 Fecha: 18-11-2026 14:32
 UTM 19S: 346564 E · 6299025 N
+Cuenca: Rio Maipo (057)
+Provincia: Cordillera · Comuna: Pirque
 ```
+
+Si la foto se toma antes de elegir cuenca, provincia o comuna, la etiqueta
+muestra "—" en esos datos y se vuelve a dibujar sola cuando se completan, y
+también al guardar. Las líneas muy largas, como algunos nombres de cuenca, se
+cortan en dos.
 
 Si se adjunta la foto antes de tomar el punto, la app toma el punto
 automáticamente. Si se vuelve a tomar el punto después, la foto se vuelve a

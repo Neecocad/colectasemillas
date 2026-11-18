@@ -182,6 +182,5 @@ tools/generar_recolectores.py · regenera js/recolectores-datos.js desde la nóm
 
 ## Próximos pasos
 
-- Publicar el Apps Script y dejar su URL fija en `js/sync.js` (`DEFAULT_URL`).
 - Editar una colecta ya guardada (por ahora solo se puede eliminar y volver a
   registrar).

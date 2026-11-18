@@ -11,7 +11,7 @@ import {
   MOMENTOS_COLECTA, ORIGENES_SEMILLA, ESPECIES, CUENCAS, TERRITORIO,
 } from './catalog.js';
 
-const VERSION = 'v3';
+const VERSION = 'v4';
 
 const $ = (id) => document.getElementById(id);
 const form = $('form-colecta');

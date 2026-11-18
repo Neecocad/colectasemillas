@@ -8,9 +8,10 @@
 // intento. El script es idempotente, así que reintentar nunca duplica filas.
 import * as DB from './db.js';
 
-// URL .../exec de la implementación del Apps Script. Se completa cuando se
-// publique el script (ver apps-script/COMO-INSTALAR.md).
-const DEFAULT_URL = '';
+// URL .../exec de la implementación del Apps Script publicada sobre la planilla
+// BD_Colectasemillas (ver apps-script/COMO-INSTALAR.md). Al actualizar el
+// script se edita esa misma implementación, así que esta URL no cambia.
+const DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbypHJkwkRxGlQADpqbiwaMAnwzL-pss-ABUMfU1_paRabY09Qom9QKX7WEhJTxPb3A/exec';
 
 // Una URL escrita a mano en el celular tiene prioridad sobre DEFAULT_URL. La
 // clave lleva versión: si algún día cambia la implementación, se sube el

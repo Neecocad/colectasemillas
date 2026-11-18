@@ -46,6 +46,11 @@ export function addColecta(reg) {
   return tx('readwrite', (s) => s.add(reg));
 }
 
+export function updateColecta(reg) {
+  reg.fecha_ultima_modificacion = new Date().toISOString();
+  return tx('readwrite', (s) => s.put(reg));
+}
+
 export function deleteColecta(id) {
   return tx('readwrite', (s) => s.delete(id));
 }

@@ -5,12 +5,13 @@ import * as DB from './db.js';
 import { latLonToUTM, HUSO_TEXTO } from './utm.js';
 import { Combobox } from './combobox.js';
 import * as XP from './export.js';
+import * as SYNC from './sync.js';
 import {
   PROYECTO, OPCION_OTRO, RECOLECTORES, FAENAS, HABITOS, ESTADOS_IDENTIFICACION,
   MOMENTOS_COLECTA, ORIGENES_SEMILLA, ESPECIES, CUENCAS, TERRITORIO,
 } from './catalog.js';
 
-const VERSION = 'v2';
+const VERSION = 'v3';
 
 const $ = (id) => document.getElementById(id);
 const form = $('form-colecta');
@@ -477,7 +478,12 @@ function esc(s) {
 
 async function refrescarLista() {
   const regs = (await DB.getColectas()).sort((a, b) => (b.fecha_creacion || '').localeCompare(a.fecha_creacion || ''));
+  const pendientes = regs.filter((r) => !r.sincronizado).length;
   $('count').textContent = regs.length;
+  $('n-pendientes').textContent = pendientes;
+  $('n-sincronizadas').textContent = regs.length - pendientes;
+  $('badge-pend').textContent = pendientes;
+  $('badge-pend').classList.toggle('hidden', !pendientes);
   const lista = $('lista');
   if (!regs.length) {
     lista.innerHTML = '<p class="empty">Aún no hay colectas guardadas.</p>';
@@ -487,12 +493,15 @@ async function refrescarLista() {
     <div class="card" data-id="${r.id}">
       <img class="card-foto" src="${r.foto}" alt="" />
       <div class="card-main">
-        <div><em>${esc(r.nombre_cientifico)}</em> · ${esc(r.nombre_comun)}</div>
+        <div><em>${esc(r.nombre_cientifico)}</em> · ${esc(r.nombre_comun)}
+          ${r.sincronizado ? '<span class="tag ok">✓ Sincronizada</span>' : '<span class="tag">Pendiente</span>'}</div>
         <div class="card-sub">${esc(r.fecha)} · ${esc(r.comuna)} · ${esc(r.cantidad_gramos)} g · ${esc(r.recolector)}</div>
         <div class="card-sub">UTM ${esc(r.huso)}: ${esc(r.utm_este)} E · ${esc(r.utm_norte)} N</div>
+        ${!r.sincronizado && r.error_sincronizacion ? `<div class="card-sub error">Último intento: ${esc(r.error_sincronizacion)}</div>` : ''}
       </div>
       <div class="card-actions">
         <button class="btn-mini" data-accion="foto" title="Descargar foto">🖼️</button>
+        ${r.sincronizado ? '<button class="btn-mini" data-accion="reenviar" title="Volver a enviar">↻</button>' : ''}
         <button class="btn-mini danger" data-accion="borrar" title="Eliminar">🗑️</button>
       </div>
     </div>`).join('');
@@ -506,8 +515,19 @@ async function accionLista(e) {
   if (!reg) return;
   if (btn.dataset.accion === 'foto') {
     XP.descargarFoto(reg);
+  } else if (btn.dataset.accion === 'reenviar') {
+    // Por si la fila se borró por error en la planilla: la marca como pendiente
+    // para que el próximo "Sincronizar" la vuelva a enviar (no se duplica).
+    if (!confirm('¿Marcar esta colecta para enviarla de nuevo en la próxima sincronización?')) return;
+    reg.sincronizado = 0;
+    reg.estado_sincronizacion = 'Pendiente';
+    await DB.updateColecta(reg);
+    await refrescarLista();
   } else if (btn.dataset.accion === 'borrar') {
-    if (!confirm(`¿Eliminar la colecta de ${reg.nombre_cientifico} del ${reg.fecha}? No se puede deshacer.`)) return;
+    const aviso = reg.sincronizado
+      ? 'Se borra solo de este celular: en la planilla y en Drive queda igual.'
+      : 'Todavía NO está sincronizada: se perderá por completo.';
+    if (!confirm(`¿Eliminar la colecta de ${reg.nombre_cientifico} del ${reg.fecha}?\n${aviso}`)) return;
     await DB.deleteColecta(id);
     toast('Colecta eliminada');
     await refrescarLista();
@@ -534,6 +554,52 @@ function setupNetwork() {
   window.addEventListener('online', upd);
   window.addEventListener('offline', upd);
   upd();
+}
+
+// ---------- Sincronización ----------
+async function sincronizar() {
+  const btn = $('btn-sync');
+  const info = $('sync-info');
+  const barra = $('sync-progreso');
+  const listaFallidos = $('sync-fallidos');
+  if (!navigator.onLine) { toast('Sin conexión: sincroniza cuando tengas señal', 4000); return; }
+  btn.disabled = true;
+  listaFallidos.classList.add('hidden');
+  barra.classList.remove('hidden');
+  try {
+    const r = await SYNC.sincronizar(VERSION, (n, total) => {
+      info.textContent = `Enviando colecta ${n} de ${total}…`;
+      barra.firstElementChild.style.width = `${Math.round(((n - 1) / total) * 100)}%`;
+    });
+    barra.firstElementChild.style.width = '100%';
+    if (!r.total) {
+      info.textContent = 'No hay colectas pendientes. Todo está sincronizado.';
+    } else {
+      info.textContent = `Sincronizadas ${r.enviados} de ${r.total}.` +
+        (r.fallidos.length ? ` Quedaron ${r.fallidos.length} pendientes: vuelve a sincronizar más tarde.` : ' ✅');
+    }
+    if (r.fallidos.length) {
+      listaFallidos.innerHTML = r.fallidos.map((f) =>
+        `<li>${esc(f.reg.fecha)} · <em>${esc(f.reg.nombre_cientifico)}</em>: ${esc(f.motivo)}</li>`).join('');
+      listaFallidos.classList.remove('hidden');
+    }
+    toast(r.fallidos.length ? 'Sincronización incompleta' : 'Sincronización terminada');
+  } catch (err) {
+    info.textContent = err.message;
+    toast(err.message, 4500);
+  } finally {
+    btn.disabled = false;
+    setTimeout(() => barra.classList.add('hidden'), 1500);
+    await refrescarLista();
+  }
+}
+
+function setupSync() {
+  $('lnk-planilla').href = SYNC.URL_DESCARGA_PLANILLA;
+  $('btn-sync').addEventListener('click', sincronizar);
+  $('sync-url').value = SYNC.getUrl();
+  $('sync-url').addEventListener('change', (e) => { SYNC.setUrl(e.target.value); toast('Dirección guardada'); });
+  $('sync-url-reset').addEventListener('click', () => { $('sync-url').value = SYNC.resetUrl(); toast('Dirección por defecto'); });
 }
 
 async function exportar(fn) {
@@ -576,6 +642,7 @@ function init() {
 
   setupTabs();
   setupNetwork();
+  setupSync();
   limpiar();
   refrescarLista();
 }

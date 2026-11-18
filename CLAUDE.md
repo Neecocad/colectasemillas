@@ -39,4 +39,11 @@ terreno, sin señal, en celulares. Sigue la estructura de
 - Verificar en Chromium con Playwright (geolocalización simulada + foto de prueba).
 - Al cambiar cualquier archivo cacheado, subir `CACHE` en `sw.js` y `VERSION` en
   `js/app.js`.
-- Etapa pendiente: backend Apps Script + Google Drive. No adelantarla sin que se pida.
+- Sincronización: `js/sync.js` envía **una colecta por llamada** (con foto) a
+  `apps-script/Codigo.gs`; upsert por "ID colecta", foto idempotente por nombre,
+  fotos en `BD_Colecta de semillas/Fotografías/AAAAMMDD` (fecha de colecta).
+- Cambiar `apps-script/Codigo.gs` no basta: hay que pegarlo en el editor de
+  Google y publicar una **nueva versión** de la implementación existente
+  (nunca una implementación nueva: cambia la URL). Recordarlo siempre.
+- El script se probó con Sheets/Drive simulados en Node; Apps Script no corre
+  localmente.

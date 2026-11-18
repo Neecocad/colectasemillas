@@ -9,9 +9,41 @@ Sigue la misma estructura que las apps de Verano Energy
 HTML + JavaScript sin dependencias, IndexedDB para guardar sin señal y un
 service worker para funcionar offline.
 
-> **Etapa actual:** solo el formulario. Las colectas quedan en el celular y se
-> descargan desde la pestaña **Exportar** (Excel + fotos en .zip). La conexión con
-> Google Drive / Google Sheets es la etapa siguiente.
+Las colectas se guardan en el celular, sin necesidad de señal. Con el botón
+**Sincronizar** se envían a la planilla **BD_Colectasemillas** de la unidad
+compartida VIVERO 2026, y las fotos quedan en Drive ordenadas por fecha.
+
+## Sincronización con Google Sheets
+
+```
+Celular ──▶ Apps Script (Web App /exec) ──▶ BD_Colectasemillas, hoja "Colectas"
+                                         └─▶ BD_Colecta de semillas / Fotografías / AAAAMMDD /
+```
+
+- **Instalación del script:** [`apps-script/COMO-INSTALAR.md`](apps-script/COMO-INSTALAR.md).
+- **Por partes:** se envía **una colecta por llamada**, con su foto. Mandarlo
+  todo junto falla cuando hay muchas fotos, porque el paquete pesa decenas de MB
+  y Apps Script corta por tiempo. Si una colecta falla (por señal débil o un
+  corte), las demás siguen y la que falló queda *Pendiente* para el próximo
+  intento.
+- **Sin duplicados:** la fila se busca por "ID colecta" y la foto por su nombre
+  dentro de su carpeta. Reenviar actualiza la fila existente en vez de crear
+  otra.
+- **Fotos por fecha:** se guardan en `Fotografías/AAAAMMDD`, según la **fecha de
+  la colecta**, por ejemplo `20261118`. En la planilla, el nombre de la foto es
+  un enlace al archivo.
+- **Hoja "Colectas":** tiene las 18 columnas de la ficha y, al final, columnas
+  de control: huso, latitud/longitud, precisión GPS, hora de la foto, fecha de
+  registro y de sincronización, versión de la app e ID de la colecta.
+- **Pestaña Sincronizar:** muestra la versión de la app, cuántas colectas están
+  pendientes o sincronizadas, el botón para sincronizar y las descargas:
+  - **Planilla completa (Google Sheets):** descarga en Excel todas las colectas
+    de todos los equipos. Necesita internet y una cuenta con acceso a la unidad
+    compartida.
+  - **Colectas y fotos de este equipo:** Excel y .zip, funcionan sin internet.
+- **Eliminar en el celular** no borra nada en la planilla ni en Drive. El botón
+  **↻** de una colecta sincronizada la marca para enviarla de nuevo, por ejemplo
+  si alguien borró su fila por error en la planilla.
 
 ## Campos (en el orden de la planilla)
 
@@ -88,7 +120,7 @@ expresan en 19S.
 ## Estructura
 
 ```
-index.html                · pantalla: Nueva colecta / Colectas / Exportar
+index.html                · pantalla: Nueva colecta / Colectas / Sincronizar
 css/styles.css            · estilos (colores del logo)
 js/app.js                 · formulario, GPS, foto con etiqueta, validación, lista
 js/combobox.js            · lista desplegable con búsqueda
@@ -98,6 +130,9 @@ js/recolectores-datos.js  · GENERADO: nombres de la nómina Biocys
 js/db.js                  · IndexedDB (guardado en el celular)
 js/utm.js                 · conversión GPS → UTM 19S
 js/export.js              · Excel y .zip de fotos
+js/sync.js                · envío al Apps Script, una colecta por llamada
+apps-script/Codigo.gs     · script de Google (se pega en la planilla)
+apps-script/COMO-INSTALAR.md · guía para publicarlo
 js/xlsx-mini.js           · generador de Excel sin internet (de verano-energy-registros)
 sw.js                     · service worker (funcionamiento offline)
 manifest.webmanifest      · datos para instalar la app
@@ -142,12 +177,11 @@ tools/generar_recolectores.py · regenera js/recolectores-datos.js desde la nóm
 4. **Territorio:** Región Metropolitana → provincias: Chacabuco, Cordillera,
    Maipo, Melipilla, Santiago, Talagante. Cordillera → comunas: Pirque,
    Puente Alto, San José de Maipo.
-5. **Exportar:** descargar el Excel y el .zip y comprobar que el nombre de cada
+5. **Descargas (pestaña Sincronizar):** descargar el Excel y el .zip y comprobar que el nombre de cada
    foto en la planilla coincide con un archivo del .zip.
 
 ## Próximos pasos
 
-- Sincronización con Google Sheets + subida de fotos a Google Drive (backend
-  Apps Script, como en Verano Energy).
+- Publicar el Apps Script y dejar su URL fija en `js/sync.js` (`DEFAULT_URL`).
 - Editar una colecta ya guardada (por ahora solo se puede eliminar y volver a
   registrar).

@@ -25,7 +25,7 @@
   <nav class="tabs">
     <button class="tab active" data-view="form">📝 Nueva colecta</button>
     <button class="tab" data-view="list">📋 Colectas <span class="badge" id="count">0</span></button>
-    <button class="tab" data-view="export">⬇️ Exportar</button>
+    <button class="tab" data-view="sync">🔄 Sincronizar <span class="badge pendiente hidden" id="badge-pend">0</span></button>
   </nav>
 
   <main>
@@ -144,16 +144,37 @@
       <div id="lista" class="list"></div>
     </section>
 
-    <!-- ===================== EXPORTAR ===================== -->
-    <section id="view-export" class="view">
+    <!-- ===================== SINCRONIZAR ===================== -->
+    <section id="view-sync" class="view">
+      <div class="version-box">Versión de la app: <strong id="version"></strong></div>
+
       <fieldset>
-        <legend>Exportar</legend>
-        <p class="hint">Las colectas quedan guardadas en este celular. Mientras no esté conectada la sincronización con Google Drive, descárgalas desde aquí.</p>
-        <button type="button" class="btn-primary" id="btn-excel">📊 Descargar planilla Excel</button>
-        <button type="button" class="btn-ghost" id="btn-fotos">🖼️ Descargar fotos (.zip)</button>
-        <p class="hint">En la planilla, la columna de fotografía trae el nombre del archivo correspondiente dentro del .zip.</p>
+        <legend>Sincronizar con Google Sheets</legend>
+        <div class="sync-stats">
+          <div><strong id="n-pendientes">0</strong><span>pendientes</span></div>
+          <div><strong id="n-sincronizadas">0</strong><span>sincronizadas</span></div>
+        </div>
+        <button type="button" class="btn-primary" id="btn-sync">🔄 Sincronizar</button>
+        <div id="sync-progreso" class="progreso hidden"><div></div></div>
+        <p class="hint" id="sync-info">Envía las colectas pendientes a la planilla BD_Colectasemillas y sus fotos a Drive, de a una.</p>
+        <ul id="sync-fallidos" class="fallidos hidden"></ul>
       </fieldset>
-      <p class="hint version">Versión <span id="version"></span></p>
+
+      <fieldset>
+        <legend>Descargar planilla</legend>
+        <a class="btn-primary btn-link-block" id="lnk-planilla" target="_blank" rel="noopener">📊 Planilla completa (Google Sheets)</a>
+        <p class="hint">Todas las colectas sincronizadas, de todos los equipos. Requiere internet y una cuenta con acceso a la unidad compartida del vivero.</p>
+        <button type="button" class="btn-ghost" id="btn-excel">📱 Colectas de este equipo (Excel)</button>
+        <button type="button" class="btn-ghost" id="btn-fotos">🖼️ Fotos de este equipo (.zip)</button>
+        <p class="hint">Funcionan sin internet. En el Excel, la columna de fotografía trae el nombre del archivo dentro del .zip.</p>
+      </fieldset>
+
+      <details class="config">
+        <summary>Configuración</summary>
+        <label for="sync-url">Dirección del Web App (termina en /exec)</label>
+        <input type="url" id="sync-url" placeholder="https://script.google.com/macros/s/…/exec" />
+        <button type="button" class="btn-link" id="sync-url-reset">Volver a la dirección por defecto</button>
+      </details>
     </section>
   </main>
 

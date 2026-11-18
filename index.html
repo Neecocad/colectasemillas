@@ -31,6 +31,10 @@
   <main>
     <!-- ===================== NUEVA COLECTA ===================== -->
     <section id="view-form" class="view active">
+      <div id="aviso-edicion" class="aviso-edicion hidden">
+        <div><strong>✏️ Editando colecta</strong><br><span id="aviso-edicion-especie"></span></div>
+        <button type="button" class="btn-mini" id="btn-cancelar-edicion">Cancelar</button>
+      </div>
       <form id="form-colecta" autocomplete="off" novalidate>
         <fieldset>
           <legend>Colecta</legend>
@@ -133,7 +137,7 @@
 
         <div class="actions">
           <button type="button" class="btn-ghost" id="btn-limpiar">Limpiar</button>
-          <button type="submit" class="btn-primary">💾 Guardar colecta</button>
+          <button type="submit" class="btn-primary" id="btn-guardar">💾 Guardar colecta</button>
         </div>
       </form>
     </section>

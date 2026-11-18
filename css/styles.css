@@ -148,3 +148,7 @@ textarea { resize: vertical; }
 .config summary { cursor: pointer; color: var(--gris); padding: 6px 0; }
 .btn-link { background: none; border: none; color: var(--verde); text-decoration: underline; font-size: .8rem; cursor: pointer; padding: 6px 0; font-family: inherit; }
 .card-sub.error { color: var(--peligro); }
+
+/* ---------- Edición ---------- */
+.aviso-edicion { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fef3c7; border: 1px solid #f5d27a; color: #78350f; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; font-size: .9rem; }
+.aviso-edicion span { font-style: italic; }

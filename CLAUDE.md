@@ -32,6 +32,10 @@ terreno, sin señal, en celulares. Sigue la estructura de
   «Colecta de semillas», fecha, coordenadas, cuenca, provincia y comuna (se
   re-dibuja al guardar).
 - UTM con huso **19S fijo** (ver README).
+- **Correcciones solo desde la app** (✏️): reemplaza la misma colecta (mismo
+  `record_id`) y la deja pendiente. La foto se re-etiqueta solo si cambia el
+  texto de la etiqueta; si no, queda idéntica y el script v3 solo la renombra
+  y/o mueve. Una foto distinta reemplaza a la anterior (que va a la papelera).
 - `js/catalogos-datos.js` es generado: se cambia la planilla en `datos/` y se
   corre `tools/generar_catalogos.py`, nunca se edita a mano.
 

@@ -15,6 +15,12 @@
  * Es idempotente (enviar dos veces lo mismo no duplica nada): la fila se busca
  * por "ID colecta" y la foto por su nombre de archivo dentro de su carpeta.
  *
+ * Correcciones (colectas editadas en la app): la fila se actualiza en su lugar
+ * y la foto anterior se reutiliza a partir del enlace de esa fila: si solo
+ * cambió la especie, la fecha o la faena, se renombra y/o se mueve a su nueva
+ * carpeta; si la imagen cambió (otra foto o nueva etiqueta), se sube la nueva y
+ * la anterior va a la papelera. Nunca quedan dos fotos para una colecta.
+ *
  * --- Instalación --- (guía detallada: apps-script/COMO-INSTALAR.md)
  * 1. Abre la planilla BD_Colectasemillas → Extensiones → Apps Script.
  *    Borra todo y pega este archivo. Guarda (Ctrl/Cmd+S).
@@ -36,7 +42,7 @@ const CARPETA_BD_ID = '1oBUJN5G3MpZLwHg74JM0deOOyUY6w7hd';
 const CARPETA_FOTOS = 'Fotografías';
 
 const HOJA = 'Colectas';
-const VERSION_SCRIPT = 'v2';
+const VERSION_SCRIPT = 'v3';
 
 // Columnas de la hoja. Las 18 primeras son las de la ficha de colecta, en el
 // mismo orden que el Excel de la app (js/catalog.js → COLUMNAS). Las que siguen
@@ -88,10 +94,15 @@ function doPost(e) {
     const c = payload.colecta;
     if (!c || !c.record_id) return _json({ status: 'error', mensaje: 'Falta la colecta o su record_id' });
 
+    const sh = _hoja();
+    const filaExistente = _filaDeId(sh, c.record_id);
     const carpeta = _carpetaDelDia(c.fecha, c.faena);
-    const foto = _guardarFoto(carpeta, c.foto, c.foto_nombre);
-    const fila = _escribirFila(c, payload.version_app, foto.url);
-    return _json({ status: 'ok', fila: fila, foto_url: foto.url, carpeta: carpeta.getName(), version_script: VERSION_SCRIPT });
+    const anterior = filaExistente ? _fotoDeFila(sh, filaExistente) : null;
+    const foto = _guardarFoto(carpeta, c.foto, c.foto_nombre, anterior);
+    const fila = _escribirFila(sh, filaExistente, c, payload.version_app, foto.url);
+    const r = { status: 'ok', fila: fila, foto_url: foto.url, carpeta: carpeta.getName(), version_script: VERSION_SCRIPT };
+    if (foto.aviso) r.aviso = foto.aviso;
+    return _json(r);
   } catch (err) {
     return _json({ status: 'error', mensaje: String(err && err.message ? err.message : err) });
   } finally {
@@ -143,8 +154,7 @@ function _hoja() {
 }
 
 // Fila de la colecta (upsert): si ya existe su ID, se sobrescribe; si no, se agrega al final.
-function _escribirFila(c, versionApp, fotoUrl) {
-  const sh = _hoja();
+function _escribirFila(sh, filaExistente, c, versionApp, fotoUrl) {
   const ahora = Utilities.formatDate(new Date(), 'America/Santiago', 'yyyy-MM-dd HH:mm:ss');
   const valores = COLUMNAS.map(function (col) {
     const campo = col[1];
@@ -155,8 +165,7 @@ function _escribirFila(c, versionApp, fotoUrl) {
     return v === null || v === undefined ? '' : v;
   });
 
-  let fila = _filaDeId(sh, c.record_id);
-  if (!fila) fila = sh.getLastRow() + 1;
+  const fila = filaExistente || sh.getLastRow() + 1;
   // Las fechas van como texto AAAA-MM-DD: así Sheets no las reinterpreta según
   // la configuración regional (18-11 vs 11-18) y se ordenan bien alfabéticamente.
   COLUMNAS.forEach(function (col, i) {
@@ -198,15 +207,63 @@ function _subcarpeta(padre, nombre) {
   return it.hasNext() ? it.next() : padre.createFolder(nombre);
 }
 
-// Guarda la foto (dataURL base64). Si ya existe un archivo con ese nombre en la
-// carpeta (reenvío), reutiliza ese en vez de duplicarlo.
-function _guardarFoto(carpeta, dataUrl, nombre) {
+// Archivo de la foto enlazada en una fila (o null si no hay o ya está en la papelera).
+function _fotoDeFila(sh, fila) {
+  try {
+    const rt = sh.getRange(fila, COL_FOTO).getRichTextValue();
+    const url = rt && rt.getLinkUrl();
+    const m = url && String(url).match(/[-\w]{25,}/);
+    if (!m) return null;
+    const archivo = DriveApp.getFileById(m[0]);
+    return archivo.isTrashed() ? null : archivo;
+  } catch (err) {
+    return null;
+  }
+}
+
+function _estaEn(archivo, carpeta) {
+  const padres = archivo.getParents();
+  while (padres.hasNext()) if (padres.next().getId() === carpeta.getId()) return true;
+  return false;
+}
+
+// Guarda la foto (dataURL base64) y devuelve { url, aviso? }.
+// - Colecta nueva: si ya existe un archivo con ese nombre en la carpeta
+//   (reenvío), se reutiliza en vez de duplicarlo.
+// - Colecta corregida (`anterior` = su foto actual): si la imagen es la misma
+//   (mismo tamaño en bytes), solo se renombra y/o se mueve; si cambió, se sube
+//   la nueva y la anterior va a la papelera.
+function _guardarFoto(carpeta, dataUrl, nombre, anterior) {
   if (!dataUrl || !nombre) throw new Error('La colecta llegó sin fotografía');
-  const existentes = carpeta.getFilesByName(nombre);
-  if (existentes.hasNext()) return { url: existentes.next().getUrl(), nueva: false };
   const partes = String(dataUrl).split(',');
-  const blob = Utilities.newBlob(Utilities.base64Decode(partes[1] || partes[0]), 'image/jpeg', nombre);
-  return { url: carpeta.createFile(blob).getUrl(), nueva: true };
+  const bytes = Utilities.base64Decode(partes[1] || partes[0]);
+
+  if (anterior && anterior.getSize() === bytes.length) {
+    const avisos = [];
+    if (anterior.getName() !== nombre) anterior.setName(nombre);
+    if (!_estaEn(anterior, carpeta)) {
+      try { anterior.moveTo(carpeta); } catch (err) { avisos.push('No se pudo mover la foto a ' + carpeta.getName() + ': ' + err); }
+    }
+    return { url: anterior.getUrl(), aviso: avisos.join(' ') };
+  }
+
+  // Un archivo con ese nombre que NO sea la foto anterior y tenga el mismo
+  // tamaño es esta misma foto subida en un intento que se cortó: se reutiliza.
+  let url = null;
+  const existentes = carpeta.getFilesByName(nombre);
+  while (!url && existentes.hasNext()) {
+    const f = existentes.next();
+    if ((!anterior || f.getId() !== anterior.getId()) && f.getSize() === bytes.length) url = f.getUrl();
+  }
+  if (!url) url = carpeta.createFile(Utilities.newBlob(bytes, 'image/jpeg', nombre)).getUrl();
+  if (anterior && anterior.getUrl() !== url) {
+    try {
+      anterior.setTrashed(true);
+    } catch (err) {
+      return { url: url, aviso: 'Foto nueva subida, pero no se pudo enviar la anterior a la papelera (' + anterior.getName() + '): ' + err };
+    }
+  }
+  return { url: url };
 }
 
 // ---------- Utilidades ----------

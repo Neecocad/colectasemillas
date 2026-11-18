@@ -11,7 +11,7 @@ import {
   MOMENTOS_COLECTA, ORIGENES_SEMILLA, ESPECIES, CUENCAS, TERRITORIO,
 } from './catalog.js';
 
-const VERSION = 'v5';
+const VERSION = 'v6';
 
 const $ = (id) => document.getElementById(id);
 const form = $('form-colecta');
@@ -138,6 +138,8 @@ function actualizarTerritorio() {
   $('f-comuna').placeholder = hayProvincia ? 'Escribe para buscar…' : 'Primero elige la provincia';
 }
 
+let toggleFaenaOtro;
+
 // ---------- Recolector (nómina + "Otro") ----------
 let cbRecolector, toggleRecolectorOtro;
 
@@ -205,9 +207,11 @@ async function tomarPunto() {
 // ---------- Fotografía con etiqueta ----------
 // La etiqueta se dibuja sobre los píxeles de la imagen (Canvas), no en los
 // metadatos EXIF, porque WhatsApp, Drive y otras apps suelen borrar los EXIF.
-// Se guarda el archivo original en memoria para poder re-etiquetar si se vuelve
-// a tomar el punto después de la foto.
-let foto = null; // { archivo, tomada: Date, dataUrl }
+// La foto original (sin etiqueta) se conserva para poder re-etiquetar: al
+// cambiar la ubicación o el punto, y al editar una colecta ya guardada.
+// `archivo` es la imagen original (Blob); puede faltar en colectas guardadas
+// antes de la v6, que solo tienen la foto ya etiquetada.
+let foto = null; // { archivo, tomada: Date, dataUrl, originalDataUrl, etiqueta }
 
 function fechaHora(d) {
   const p = (n) => String(n).padStart(2, '0');
@@ -244,7 +248,15 @@ function cortarLinea(ctx, texto, ancho) {
 
 // Re-dibuja la etiqueta si ya hay foto (p. ej. al cambiar cuenca o comuna).
 function reetiquetar() {
-  if (foto && punto) etiquetarFoto().catch(() => {});
+  if (foto && foto.archivo && punto) etiquetarFoto().catch(() => {});
+}
+
+function dataUrlABlob(dataUrl) {
+  const [cab, b64] = dataUrl.split(',');
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: (cab.match(/data:([^;]+)/) || [])[1] || 'image/jpeg' });
 }
 
 function cargarImagen(archivo) {
@@ -258,6 +270,8 @@ function cargarImagen(archivo) {
 }
 
 async function etiquetarFoto() {
+  // Colecta antigua sin foto original: se deja la foto tal como está.
+  if (!foto.archivo) return;
   const img = await cargarImagen(foto.archivo);
   const maxLado = 1600;
   const escala = Math.min(1, maxLado / Math.max(img.width, img.height));
@@ -267,6 +281,8 @@ async function etiquetarFoto() {
   canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(img, 0, 0, w, h);
+  // Copia sin etiqueta, del mismo tamaño, para poder re-etiquetar más adelante.
+  if (!foto.originalDataUrl) foto.originalDataUrl = canvas.toDataURL('image/jpeg', 0.85);
 
   const textos = lineasEtiqueta();
   // Letra proporcional a la foto, achicada hasta que la línea más larga quepa,
@@ -291,6 +307,7 @@ async function etiquetarFoto() {
   lineas.forEach((l, i) => ctx.fillText(l, pad, h - altoCaja + pad + i * altoLinea));
 
   foto.dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  foto.etiqueta = textos.join(' | '); // lo que dice la etiqueta dibujada
   const prev = $('foto-preview');
   prev.querySelector('img').src = foto.dataUrl;
   prev.classList.remove('hidden');
@@ -310,7 +327,7 @@ async function alElegirFoto(e) {
       return;
     }
   }
-  foto = { archivo, tomada: new Date(), dataUrl: null };
+  foto = { archivo, tomada: new Date(), dataUrl: null, originalDataUrl: null };
   try {
     await etiquetarFoto();
   } catch (err) {
@@ -353,6 +370,9 @@ function validar() {
   if (campo('faena').value === OPCION_OTRO && !campo('faena_otro').value.trim()) marcar(campo('faena_otro'));
   if (cbCuenca.valor === OPCION_OTRO && !campo('cuenca_otro').value.trim()) marcar(campo('cuenca_otro'));
   if (!foto || !foto.dataUrl) marcar($('lbl-foto'));
+  else if (!foto.archivo && editando && cambioLaEtiqueta(editando)) {
+    marcar($('lbl-foto'), 'la foto es de una versión anterior y su etiqueta no se puede actualizar: vuelve a tomarla');
+  }
   return faltan;
 }
 
@@ -390,16 +410,18 @@ async function guardar(e) {
     return;
   }
   // La etiqueta se dibuja de nuevo con los datos definitivos (cuenca, provincia,
-  // comuna), por si se cambiaron después de tomar la foto.
+  // comuna), por si se cambiaron después de tomar la foto. Si dice exactamente
+  // lo mismo (p. ej. al corregir solo la especie) la foto no se toca: así queda
+  // idéntica y en Drive solo se renombra, sin volver a subirla.
   try {
-    await etiquetarFoto();
+    if (foto.etiqueta !== lineasEtiqueta().join(' | ')) await etiquetarFoto();
   } catch (err) {
     toast('No se pudo preparar la foto: ' + err.message, 5000);
     return;
   }
 
   const reg = {
-    record_id: nuevoUUID(),
+    record_id: editando ? editando.record_id : nuevoUUID(),
     fecha: campo('fecha').value,
     recolector: valorOtro(cbRecolector.valor, 'recolector_otro', true),
     faena: valorOtro(campo('faena').value, 'faena_otro', true),
@@ -422,21 +444,122 @@ async function guardar(e) {
     cantidad_gramos: Number(campo('cantidad_gramos').value),
     comentarios: campo('comentarios').value.trim(),
     foto: foto.dataUrl,
+    foto_original: foto.originalDataUrl || null,
+    foto_etiqueta: foto.etiqueta || null,
     foto_tomada: foto.tomada.toISOString(),
   };
+  // El nombre del archivo incluye la especie: si se corrige la especie, cambia
+  // el nombre, y el script renombra la foto en Drive en vez de duplicarla.
   reg.foto_nombre = nombreFoto(reg);
 
+  const eraEdicion = !!editando;
   try {
-    await DB.addColecta(reg);
+    if (editando) {
+      // Misma colecta (mismo id local y mismo record_id): se reemplaza y queda
+      // pendiente, para que la próxima sincronización actualice su fila.
+      Object.assign(reg, {
+        id: editando.id,
+        fecha_creacion: editando.fecha_creacion,
+        sincronizado: 0,
+        estado_sincronizacion: 'Pendiente',
+        editada: (editando.editada || 0) + 1,
+      });
+      await DB.updateColecta(reg);
+    } else {
+      await DB.addColecta(reg);
+    }
   } catch (err) {
     toast('Error al guardar: ' + err.message, 5000);
     return;
   }
-  toast('✅ Colecta guardada');
-  recordarSalida();
-  limpiar();
-  await refrescarLista();
+  if (eraEdicion) {
+    toast('✅ Corrección guardada: sincroniza para actualizar la planilla', 4000);
+    limpiar();
+    await refrescarLista();
+    irA('list');
+  } else {
+    toast('✅ Colecta guardada');
+    recordarSalida();
+    limpiar();
+    await refrescarLista();
+  }
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ---------- Editar una colecta guardada ----------
+// Se carga en el mismo formulario, con las mismas validaciones. Al guardar
+// reemplaza a la colecta original (no crea otra) y la deja pendiente.
+let editando = null;
+
+// ¿Cambió algo de lo que aparece en la etiqueta de la foto?
+function cambioLaEtiqueta(r) {
+  return valorOtro(cbCuenca.valor, 'cuenca_otro') !== r.cuenca || cbProvincia.valor !== r.provincia ||
+    cbComuna.valor !== r.comuna || punto.este !== r.utm_este || punto.norte !== r.utm_norte;
+}
+
+// Pone un valor en una lista con "Otro": si no está entre las opciones, elige
+// "Otro (especificar)" y lo escribe en el campo de texto.
+function fijarConOtro(valor, opciones, fijar, otroCampo, toggle) {
+  const esOtro = !!valor && !opciones.includes(valor);
+  fijar(esOtro ? OPCION_OTRO : (valor || ''));
+  toggle(); // muestra u oculta (y vacía) el campo de texto libre
+  if (esOtro) campo(otroCampo).value = valor;
+}
+
+async function editar(reg) {
+  if (!editando && formularioConDatos() &&
+      !confirm('El formulario tiene datos de una colecta nueva sin guardar. ¿Descartarlos para editar esta colecta?')) return;
+  limpiar();
+  editando = reg;
+  campo('fecha').value = reg.fecha;
+  fijarConOtro(reg.recolector, RECOLECTORES, (v) => cbRecolector.fijar(v), 'recolector_otro', toggleRecolectorOtro);
+  fijarConOtro(reg.faena, FAENAS, (v) => { campo('faena').value = v; }, 'faena_otro', toggleFaenaOtro);
+  cbCientifico.fijar(reg.nombre_cientifico);
+  cbComun.fijar(reg.nombre_comun);
+  campo('habito').value = reg.habito;
+  campo('estado_identificacion').value = reg.estado_identificacion;
+  campo('momento_colecta').value = reg.momento_colecta;
+  fijarConOtro(reg.cuenca, CUENCAS, (v) => cbCuenca.fijar(v), 'cuenca_otro', toggleCuencaOtro);
+  cbRegion.fijar(reg.region);
+  cbProvincia.fijar(reg.provincia);
+  cbComuna.fijar(reg.comuna);
+  actualizarTerritorio();
+  punto = { huso: reg.huso, este: reg.utm_este, norte: reg.utm_norte, lat: reg.latitud, lon: reg.longitud, precision_m: reg.precision_m };
+  campo('utm_este').value = reg.utm_este;
+  campo('utm_norte').value = reg.utm_norte;
+  $('gps-info').textContent = `UTM ${reg.huso} (WGS84) · precisión ±${reg.precision_m} m (punto guardado)`;
+  $('btn-punto').textContent = '📍 Volver a tomar el punto';
+  foto = {
+    archivo: reg.foto_original ? dataUrlABlob(reg.foto_original) : null,
+    tomada: new Date(reg.foto_tomada),
+    dataUrl: reg.foto,
+    originalDataUrl: reg.foto_original || null,
+    etiqueta: reg.foto_etiqueta || null,
+  };
+  const prev = $('foto-preview');
+  prev.querySelector('img').src = reg.foto;
+  prev.classList.remove('hidden');
+  $('lbl-foto').textContent = '📷 Cambiar fotografía';
+  campo('semillas_de').value = reg.semillas_de;
+  campo('cantidad_gramos').value = reg.cantidad_gramos;
+  campo('comentarios').value = reg.comentarios || '';
+
+  $('aviso-edicion-especie').textContent = `${reg.nombre_cientifico} · ${reg.fecha}`;
+  $('aviso-edicion').classList.remove('hidden');
+  $('btn-guardar').textContent = '💾 Guardar corrección';
+  $('btn-limpiar').textContent = 'Cancelar';
+  irA('form');
+}
+
+function cancelarEdicion() {
+  limpiar();
+  irA('list');
+}
+
+// ¿Hay algo escrito en el formulario de una colecta nueva? (para no perderlo)
+function formularioConDatos() {
+  return !!(cbCientifico.valor || cbComun.valor || foto || punto || campo('cantidad_gramos').value ||
+    campo('comentarios').value.trim());
 }
 
 // ---------- Datos de la salida (se repiten entre colectas del mismo día) ----------
@@ -478,6 +601,10 @@ function salidaDeHoy() {
 // Deja el formulario en blanco para la siguiente colecta y repone los datos de
 // la salida si se guardó alguna colecta hoy.
 function limpiar() {
+  editando = null;
+  $('aviso-edicion').classList.add('hidden');
+  $('btn-guardar').textContent = '💾 Guardar colecta';
+  $('btn-limpiar').textContent = 'Limpiar';
   form.reset();
   form.querySelectorAll('.invalido').forEach((el) => el.classList.remove('invalido'));
   [cbRecolector, cbCientifico, cbComun, cbCuenca, cbRegion, cbProvincia, cbComuna].forEach((cb) => cb.fijar(''));
@@ -540,6 +667,7 @@ async function refrescarLista() {
         ${!r.sincronizado && r.error_sincronizacion ? `<div class="card-sub error">Último intento: ${esc(r.error_sincronizacion)}</div>` : ''}
       </div>
       <div class="card-actions">
+        <button class="btn-mini" data-accion="editar" title="Editar">✏️</button>
         <button class="btn-mini" data-accion="foto" title="Descargar foto">🖼️</button>
         ${r.sincronizado ? '<button class="btn-mini" data-accion="reenviar" title="Volver a enviar">↻</button>' : ''}
         <button class="btn-mini danger" data-accion="borrar" title="Eliminar">🗑️</button>
@@ -553,7 +681,9 @@ async function accionLista(e) {
   const id = Number(btn.closest('.card').dataset.id);
   const reg = await DB.getColecta(id);
   if (!reg) return;
-  if (btn.dataset.accion === 'foto') {
+  if (btn.dataset.accion === 'editar') {
+    await editar(reg);
+  } else if (btn.dataset.accion === 'foto') {
     XP.descargarFoto(reg);
   } else if (btn.dataset.accion === 'reenviar') {
     // Por si la fila se borró por error en la planilla: la marca como pendiente
@@ -568,6 +698,7 @@ async function accionLista(e) {
       ? 'Se borra solo de este celular: en la planilla y en Drive queda igual.'
       : 'Todavía NO está sincronizada: se perderá por completo.';
     if (!confirm(`¿Eliminar la colecta de ${reg.nombre_cientifico} del ${reg.fecha}?\n${aviso}`)) return;
+    if (editando && editando.id === id) limpiar();
     await DB.deleteColecta(id);
     toast('Colecta eliminada');
     await refrescarLista();
@@ -575,14 +706,14 @@ async function accionLista(e) {
 }
 
 // ---------- Navegación y arranque ----------
+function irA(vista) {
+  document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.view === vista));
+  document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + vista));
+  window.scrollTo({ top: 0 });
+}
+
 function setupTabs() {
-  document.querySelectorAll('.tab').forEach((tab) => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t === tab));
-      document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + tab.dataset.view));
-      window.scrollTo({ top: 0 });
-    });
-  });
+  document.querySelectorAll('.tab').forEach((tab) => tab.addEventListener('click', () => irA(tab.dataset.view)));
 }
 
 function setupNetwork() {
@@ -658,8 +789,9 @@ function init() {
   setupEspecie();
   setupTerritorio();
   setupCuenca();
-  const toggleFaena = wireOtro('faena', () => campo('faena').value);
-  campo('faena').addEventListener('change', toggleFaena);
+  toggleFaenaOtro = wireOtro('faena', () => campo('faena').value);
+  campo('faena').addEventListener('change', toggleFaenaOtro);
+  $('btn-cancelar-edicion').addEventListener('click', cancelarEdicion);
   // "Otro" en recolector y faena: se escribe solo en mayúsculas.
   form.querySelectorAll('input.mayusculas').forEach((el) => el.addEventListener('input', () => {
     const pos = el.selectionStart;
@@ -674,7 +806,10 @@ function init() {
   $('btn-punto').addEventListener('click', tomarPunto);
   $('f-foto').addEventListener('change', alElegirFoto);
   $('btn-quitar-foto').addEventListener('click', quitarFoto);
-  $('btn-limpiar').addEventListener('click', () => { if (confirm('¿Borrar todo lo escrito en el formulario?')) { olvidarSalida(); limpiar(); } });
+  $('btn-limpiar').addEventListener('click', () => {
+    if (editando) { cancelarEdicion(); return; }
+    if (confirm('¿Borrar todo lo escrito en el formulario?')) { olvidarSalida(); limpiar(); }
+  });
   form.addEventListener('submit', guardar);
   $('lista').addEventListener('click', accionLista);
   $('btn-excel').addEventListener('click', () => exportar(XP.descargarExcel));

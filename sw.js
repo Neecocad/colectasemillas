@@ -1,6 +1,6 @@
 // Service Worker — guarda una copia de la app en el celular para que funcione sin señal.
 // Al cambiar cualquier archivo de la lista, subir CACHE (y VERSION en js/app.js).
-const CACHE = 'colecta-semillas-v5';
+const CACHE = 'colecta-semillas-v6';
 const ASSETS = [
   './',
   './index.html',

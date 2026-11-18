@@ -213,3 +213,7 @@ tools/generar_recolectores.py · regenera js/recolectores-datos.js desde la nóm
 
 ## Próximos pasos
 
+- Tablero de seguimiento sobre la planilla (colectas y gramos por especie,
+  cuenca y faena).
+- Botón para liberar espacio en el celular borrando de una vez las colectas ya
+  sincronizadas.

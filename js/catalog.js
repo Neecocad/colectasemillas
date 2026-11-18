@@ -2,6 +2,7 @@
 // Los catálogos largos (especies, cuencas, regiones/provincias/comunas) se generan
 // desde las planillas de datos/ y viven en catalogos-datos.js.
 export { ESPECIES, CUENCAS, TERRITORIO } from './catalogos-datos.js';
+import { NOMINA } from './recolectores-datos.js';
 
 export const PROYECTO = {
   nombre: 'Colecta de semillas',
@@ -11,15 +12,12 @@ export const PROYECTO = {
 // Valor que habilita el campo de texto libre en las listas que lo admiten.
 export const OPCION_OTRO = 'Otro (especificar)';
 
-// Personas recolectoras. En la planilla de listas aparecen bajo la columna de
-// faena, separadas por una fila vacía; se interpretan como recolectores.
-export const RECOLECTORES = ['Maria Paz Quiroz', 'Patricia Vera', 'Mauricio Lemus', OPCION_OTRO];
+// Personas recolectoras: nómina de Biocys (generada, ver recolectores-datos.js)
+// + "Otro" para escribir un nombre que no esté (se guarda en mayúsculas).
+export const RECOLECTORES = [...NOMINA, OPCION_OTRO];
 
-// "Faena (en caso que corresponda)": "No corresponde" cubre las colectas sin
-// faena, porque el formulario no deja guardar campos vacíos. "Otros" se escribe
-// a mano y se guarda en mayúsculas.
-export const OPCION_NO_CORRESPONDE = 'No corresponde';
-export const FAENAS = ['Santiago Solar', 'Vivero', 'Canalistas', 'Palqui', OPCION_OTRO, OPCION_NO_CORRESPONDE];
+// Faena: "Otro" se escribe a mano y se guarda en mayúsculas.
+export const FAENAS = ['Santiago Solar', 'Vivero', 'Canalistas', 'Palqui', OPCION_OTRO];
 
 export const HABITOS = ['Arbol', 'Arbusto', 'Cactus', 'Hierba', 'Trepadora'];
 export const ESTADOS_IDENTIFICACION = ['Especie confirmada', 'Especie pendiente', 'Especie no identificada'];

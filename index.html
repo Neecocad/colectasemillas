@@ -38,10 +38,10 @@
           <input type="date" id="f-fecha" data-f="fecha" data-nombre="Fecha colecta" />
 
           <label for="f-recolector">Nombre de recolector</label>
-          <select id="f-recolector" data-f="recolector" data-nombre="Nombre de recolector"></select>
+          <input type="text" id="f-recolector" data-f="recolector" data-nombre="Nombre de recolector" placeholder="Escribe para buscar…" />
           <div class="hidden" data-otro="recolector">
             <label for="f-recolector-otro">Nombre de la persona recolectora</label>
-            <input type="text" id="f-recolector-otro" data-f="recolector_otro" data-nombre="Nombre de recolector (otro)" />
+            <input type="text" id="f-recolector-otro" class="mayusculas" data-f="recolector_otro" data-nombre="Nombre de recolector (otro)" />
           </div>
 
           <label for="f-faena">Faena (en caso que corresponda)</label>
@@ -125,7 +125,7 @@
           <label for="f-cantidad">Cantidad colectada (gramos)</label>
           <input type="number" id="f-cantidad" data-f="cantidad_gramos" data-nombre="Cantidad colectada (gramos)" min="0" step="any" inputmode="decimal" />
 
-          <label for="f-comentarios">Comentarios</label>
+          <label for="f-comentarios">Comentarios <span class="opcional">(opcional)</span></label>
           <textarea id="f-comentarios" data-f="comentarios" data-nombre="Comentarios" rows="3"></textarea>
         </fieldset>
 

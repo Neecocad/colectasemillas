@@ -10,7 +10,7 @@ import {
   MOMENTOS_COLECTA, ORIGENES_SEMILLA, ESPECIES, CUENCAS, TERRITORIO,
 } from './catalog.js';
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 
 const $ = (id) => document.getElementById(id);
 const form = $('form-colecta');
@@ -132,6 +132,17 @@ function actualizarTerritorio() {
   cbComuna.habilitar(hayProvincia);
   $('f-provincia').placeholder = hayRegion ? 'Escribe para buscar…' : 'Primero elige la región';
   $('f-comuna').placeholder = hayProvincia ? 'Escribe para buscar…' : 'Primero elige la provincia';
+}
+
+// ---------- Recolector (nómina + "Otro") ----------
+let cbRecolector, toggleRecolectorOtro;
+
+function setupRecolector() {
+  cbRecolector = new Combobox($('f-recolector'), {
+    opciones: () => RECOLECTORES,
+    onCambio: () => toggleRecolectorOtro(),
+  });
+  toggleRecolectorOtro = wireOtro('recolector', () => cbRecolector.valor);
 }
 
 // ---------- Cuenca (con "Otro") ----------
@@ -297,7 +308,7 @@ function validar() {
 
   const requeridos = ['fecha', 'recolector', 'faena', 'nombre_cientifico', 'nombre_comun', 'habito',
     'estado_identificacion', 'momento_colecta', 'cuenca', 'region', 'provincia', 'comuna',
-    'utm_este', 'utm_norte', 'semillas_de', 'cantidad_gramos', 'comentarios'];
+    'utm_este', 'utm_norte', 'semillas_de', 'cantidad_gramos']; // Comentarios es opcional
   // Los combobox ya vacían lo que no es de la lista, así que basta con revisar vacíos.
   for (const f of requeridos) {
     const el = campo(f);
@@ -305,7 +316,7 @@ function validar() {
     if (f === 'fecha' && el.value && el.value > hoyLocal()) marcar(el, 'no puede ser posterior a hoy');
     if (f === 'cantidad_gramos' && el.value !== '' && !(Number(el.value) > 0)) marcar(el, 'debe ser mayor que 0');
   }
-  if (campo('recolector').value === OPCION_OTRO && !campo('recolector_otro').value.trim()) marcar(campo('recolector_otro'));
+  if (cbRecolector.valor === OPCION_OTRO && !campo('recolector_otro').value.trim()) marcar(campo('recolector_otro'));
   if (campo('faena').value === OPCION_OTRO && !campo('faena_otro').value.trim()) marcar(campo('faena_otro'));
   if (cbCuenca.valor === OPCION_OTRO && !campo('cuenca_otro').value.trim()) marcar(campo('cuenca_otro'));
   if (!foto || !foto.dataUrl) marcar($('lbl-foto'));
@@ -349,7 +360,7 @@ async function guardar(e) {
   const reg = {
     record_id: nuevoUUID(),
     fecha: campo('fecha').value,
-    recolector: valorOtro(campo('recolector').value, 'recolector_otro'),
+    recolector: valorOtro(cbRecolector.valor, 'recolector_otro', true),
     faena: valorOtro(campo('faena').value, 'faena_otro', true),
     nombre_cientifico: cbCientifico.valor,
     nombre_comun: cbComun.valor,
@@ -381,26 +392,54 @@ async function guardar(e) {
     return;
   }
   toast('✅ Colecta guardada');
-  limpiar(true);
+  recordarSalida();
+  limpiar();
   await refrescarLista();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// Deja el formulario listo para la siguiente colecta. Con `conservar`, mantiene
-// lo que suele repetirse en una misma salida (fecha, recolector, faena, cuenca y
-// territorio) para no volver a escribirlo.
-function limpiar(conservar = false) {
-  const guardados = conservar ? {
+// ---------- Datos de la salida (se repiten entre colectas del mismo día) ----------
+// Al guardar, se recuerdan fecha, recolector, faena, cuenca y región/provincia/
+// comuna en el almacenamiento del navegador (localStorage), junto con el día en
+// que se guardaron. Se vuelven a poner en el formulario solo si ese día es hoy:
+// al día siguiente el formulario parte en blanco.
+const CLAVE_SALIDA = 'colecta-semillas:salida';
+
+function datosSalida() {
+  return {
     fecha: campo('fecha').value,
-    recolector: campo('recolector').value, recolector_otro: campo('recolector_otro').value,
+    recolector: cbRecolector.valor, recolector_otro: campo('recolector_otro').value,
     faena: campo('faena').value, faena_otro: campo('faena_otro').value,
     cuenca: cbCuenca.valor, cuenca_otro: campo('cuenca_otro').value,
     region: cbRegion.valor, provincia: cbProvincia.valor, comuna: cbComuna.valor,
-  } : null;
+  };
+}
 
+function recordarSalida() {
+  try {
+    localStorage.setItem(CLAVE_SALIDA, JSON.stringify({ dia: hoyLocal(), datos: datosSalida() }));
+  } catch { /* sin almacenamiento disponible: simplemente no se recuerda */ }
+}
+
+function olvidarSalida() {
+  try { localStorage.removeItem(CLAVE_SALIDA); } catch { /* nada que olvidar */ }
+}
+
+function salidaDeHoy() {
+  try {
+    const s = JSON.parse(localStorage.getItem(CLAVE_SALIDA));
+    return s && s.dia === hoyLocal() ? s.datos : null;
+  } catch {
+    return null;
+  }
+}
+
+// Deja el formulario en blanco para la siguiente colecta y repone los datos de
+// la salida si se guardó alguna colecta hoy.
+function limpiar() {
   form.reset();
   form.querySelectorAll('.invalido').forEach((el) => el.classList.remove('invalido'));
-  [cbCientifico, cbComun, cbCuenca, cbRegion, cbProvincia, cbComuna].forEach((cb) => cb.fijar(''));
+  [cbRecolector, cbCientifico, cbComun, cbCuenca, cbRegion, cbProvincia, cbComuna].forEach((cb) => cb.fijar(''));
   filtroCientificos = null;
   avisoEspecie();
   punto = null;
@@ -408,19 +447,21 @@ function limpiar(conservar = false) {
   $('gps-info').textContent = `Coordenadas UTM huso ${HUSO_TEXTO.replace('S', ' Sur')} (WGS84).`;
   quitarFoto();
   mostrarErrores([]);
+  campo('fecha').max = hoyLocal();
   campo('fecha').value = hoyLocal();
 
-  if (guardados) {
-    campo('fecha').value = guardados.fecha;
-    campo('recolector').value = guardados.recolector;
-    campo('recolector_otro').value = guardados.recolector_otro;
-    campo('faena').value = guardados.faena;
-    campo('faena_otro').value = guardados.faena_otro;
-    cbCuenca.fijar(guardados.cuenca);
-    campo('cuenca_otro').value = guardados.cuenca_otro;
-    cbRegion.fijar(guardados.region);
-    cbProvincia.fijar(guardados.provincia);
-    cbComuna.fijar(guardados.comuna);
+  const salida = salidaDeHoy();
+  if (salida) {
+    campo('fecha').value = salida.fecha;
+    cbRecolector.fijar(salida.recolector);
+    campo('recolector_otro').value = salida.recolector_otro;
+    campo('faena').value = salida.faena;
+    campo('faena_otro').value = salida.faena_otro;
+    cbCuenca.fijar(salida.cuenca);
+    campo('cuenca_otro').value = salida.cuenca_otro;
+    cbRegion.fijar(salida.region);
+    cbProvincia.fijar(salida.provincia);
+    cbComuna.fijar(salida.comuna);
   }
   form.querySelectorAll('[data-otro]').forEach((w) => {
     const input = w.querySelector('input');
@@ -502,27 +543,23 @@ async function exportar(fn) {
 }
 
 function init() {
-  llenarSelect(campo('recolector'), RECOLECTORES);
   llenarSelect(campo('faena'), FAENAS);
   llenarSelect(campo('habito'), HABITOS);
   llenarSelect(campo('estado_identificacion'), ESTADOS_IDENTIFICACION);
   llenarSelect(campo('momento_colecta'), MOMENTOS_COLECTA);
   llenarSelect(campo('semillas_de'), ORIGENES_SEMILLA);
-  campo('fecha').max = hoyLocal();
-
+  setupRecolector();
   setupEspecie();
   setupTerritorio();
   setupCuenca();
-  const toggleRecolector = wireOtro('recolector', () => campo('recolector').value);
   const toggleFaena = wireOtro('faena', () => campo('faena').value);
-  campo('recolector').addEventListener('change', toggleRecolector);
   campo('faena').addEventListener('change', toggleFaena);
-  // "Otros" en faena: se escribe solo en mayúsculas.
-  campo('faena_otro').addEventListener('input', (e) => {
-    const pos = e.target.selectionStart;
-    e.target.value = e.target.value.toUpperCase();
-    e.target.setSelectionRange(pos, pos);
-  });
+  // "Otro" en recolector y faena: se escribe solo en mayúsculas.
+  form.querySelectorAll('input.mayusculas').forEach((el) => el.addEventListener('input', () => {
+    const pos = el.selectionStart;
+    el.value = el.value.toUpperCase();
+    el.setSelectionRange(pos, pos);
+  }));
   // Al corregir un campo marcado, se quita la marca roja.
   form.addEventListener('input', (e) => e.target.classList.remove('invalido'));
   form.addEventListener('change', (e) => e.target.classList.remove('invalido'));
@@ -530,7 +567,7 @@ function init() {
   $('btn-punto').addEventListener('click', tomarPunto);
   $('f-foto').addEventListener('change', alElegirFoto);
   $('btn-quitar-foto').addEventListener('click', quitarFoto);
-  $('btn-limpiar').addEventListener('click', () => { if (confirm('¿Borrar todo lo escrito en el formulario?')) limpiar(); });
+  $('btn-limpiar').addEventListener('click', () => { if (confirm('¿Borrar todo lo escrito en el formulario?')) { olvidarSalida(); limpiar(); } });
   form.addEventListener('submit', guardar);
   $('lista').addEventListener('click', accionLista);
   $('btn-excel').addEventListener('click', () => exportar(XP.descargarExcel));

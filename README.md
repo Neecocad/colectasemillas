@@ -18,8 +18,8 @@ service worker para funcionar offline.
 | # | Columna | Cómo se llena |
 |---|---|---|
 | 1 | Fecha colecta | Calendario (por defecto hoy; no acepta fechas futuras) |
-| 2 | Nombre de recolector | Lista + "Otro (especificar)" con texto libre |
-| 3 | Faena (en caso que corresponda) | Santiago Solar / Vivero / Canalistas / Palqui / Otro (texto, **solo mayúsculas**) / No corresponde |
+| 2 | Nombre de recolector | Lista con búsqueda (nómina Biocys) + "Otro (especificar)" con texto libre **en mayúsculas** |
+| 3 | Faena (en caso que corresponda) | Santiago Solar / Vivero / Canalistas / Palqui / Otro (texto, **solo mayúsculas**) |
 | 4 | Nombre científico | Lista con búsqueda (407 especies). Al elegirlo, completa el nombre común |
 | 5 | Nombre común | Lista con búsqueda. Al elegirlo, completa el científico (ver abajo) |
 | 6 | Hábito de crecimiento | Arbol / Arbusto / Cactus / Hierba / Trepadora |
@@ -31,10 +31,19 @@ service worker para funcionar offline.
 | 14–15 | Coordenada Este / Norte | Botón **📍 Tomar punto de la muestra** (UTM 19S, WGS84) |
 | 16 | Semillas colectadas de | Planta / Suelo / Ambas |
 | 17 | Cantidad colectada (gramos) | Número mayor que 0 |
-| 18 | Comentarios | Texto |
+| 18 | Comentarios | Texto (**opcional**) |
 
-**Todos los campos son obligatorios**: si falta alguno, el formulario no guarda,
-marca en rojo lo que falta y muestra la lista arriba del botón Guardar.
+**Todos los campos son obligatorios, salvo Comentarios**: si falta alguno, el
+formulario no guarda, marca en rojo lo que falta y muestra la lista arriba del
+botón Guardar.
+
+### Datos que se repiten en la misma salida
+
+Al guardar una colecta, la app recuerda fecha, recolector, faena, cuenca y
+región/provincia/comuna, y los deja puestos para la siguiente colecta **solo si
+es el mismo día** (también si se cierra y se vuelve a abrir la app ese día). Al
+día siguiente el formulario parte en blanco. El botón **Limpiar** borra todo,
+incluidos esos datos recordados.
 
 ### Nombre científico ↔ nombre común
 
@@ -85,6 +94,7 @@ js/app.js                 · formulario, GPS, foto con etiqueta, validación, li
 js/combobox.js            · lista desplegable con búsqueda
 js/catalog.js             · catálogos cortos y orden de columnas de la planilla
 js/catalogos-datos.js     · GENERADO: especies, cuencas, regiones/provincias/comunas
+js/recolectores-datos.js  · GENERADO: nombres de la nómina Biocys
 js/db.js                  · IndexedDB (guardado en el celular)
 js/utm.js                 · conversión GPS → UTM 19S
 js/export.js              · Excel y .zip de fotos
@@ -94,6 +104,7 @@ manifest.webmanifest      · datos para instalar la app
 icons/                    · logo Vivero Guayacanes e íconos
 datos/                    · planillas fuente de las listas
 tools/generar_catalogos.py · regenera js/catalogos-datos.js desde datos/
+tools/generar_recolectores.py · regenera js/recolectores-datos.js desde la nómina
 ```
 
 ## Cambiar las listas
@@ -101,7 +112,13 @@ tools/generar_catalogos.py · regenera js/catalogos-datos.js desde datos/
 - **Especies, cuencas, regiones/provincias/comunas:** reemplazar la planilla en
   `datos/` (mismo nombre y mismas columnas) y correr
   `python3 tools/generar_catalogos.py` (necesita `pip install openpyxl`).
-- **Recolectores, faenas y demás listas cortas:** editar `js/catalog.js`.
+- **Recolectores:** se generan desde la nómina mensual de Biocys con
+  `python3 tools/generar_recolectores.py "ruta/a/la/nomina.xlsx"`. La nómina
+  **no se guarda en el repositorio** porque trae RUT, fechas de nacimiento,
+  direcciones y correos; el script toma solo la columna de nombres. Los nombres
+  quedan como en la nómina (apellidos primero), y la búsqueda encuentra
+  cualquier parte del nombre.
+- **Faenas y demás listas cortas:** editar `js/catalog.js`.
 - Después de cualquier cambio, subir `CACHE` en `sw.js` y `VERSION` en
   `js/app.js`. Si no, los celulares que ya tienen la app instalada pueden seguir
   mostrando la versión anterior.

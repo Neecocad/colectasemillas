@@ -17,7 +17,12 @@ terreno, sin señal, en celulares. Sigue la estructura de
 
 ## Reglas que no se deben romper
 
-- **Todos los campos son obligatorios**: no se guarda nada incompleto.
+- **Todos los campos son obligatorios salvo Comentarios**: no se guarda nada incompleto.
+- Los "Otro" de recolector y faena se guardan en **mayúsculas**.
+- La nómina de Biocys **nunca** se sube al repo (datos personales): solo los
+  nombres, vía `tools/generar_recolectores.py`.
+- Fecha, recolector, faena, cuenca y territorio se reponen tras guardar **solo
+  el mismo día** (localStorage con la fecha).
 - **Orden de columnas** = el de `COLUMNAS` en `js/catalog.js` (Nombre científico
   antes que Nombre común).
 - **Científico → común** siempre se autocompleta; **común → científico** solo si

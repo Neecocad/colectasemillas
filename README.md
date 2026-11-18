@@ -46,18 +46,17 @@ Celular ──▶ Apps Script (Web App /exec) ──▶ BD_Colectasemillas, hoja
 - **Corregir una colecta:** en la pestaña Colectas, el botón ✏️ abre la colecta
   en el formulario con sus datos, con las mismas validaciones. Al guardar, la
   colecta queda *Pendiente* y la próxima sincronización **actualiza su misma
-  fila**, sin crear otra. Con la foto:
-  - **Si solo cambia la especie** (el caso más común), la foto no se toca: en
-    Drive solo se renombra.
-  - **Si cambia la fecha o la faena**, la foto se mueve a la carpeta que
-    corresponde.
-  - **Si cambia la cuenca, la provincia, la comuna o el punto**, la etiqueta se
-    vuelve a dibujar, la foto nueva reemplaza a la anterior y la anterior va a
-    la papelera.
-
-  Para poder re-etiquetar, la app guarda también la foto original sin etiqueta.
-  Las colectas guardadas antes de la v6 no la tienen, así que en esas, si cambia
-  la ubicación, hay que tomar la foto de nuevo.
+  fila**, sin crear otra.
+  - **La foto y el punto GPS quedan bloqueados (🔒):** no se pueden quitar,
+    cambiar ni volver a tomar. Las correcciones suelen hacerse después, lejos
+    del lugar (por ejemplo, corregir el nombre científico en la oficina), donde
+    ya no se puede fotografiar el individuo ni tomar su punto. Volver a tomar el
+    punto ahí registraría la ubicación de la oficina.
+  - **En Drive, la foto nunca se borra:** si cambia la especie, solo se
+    renombra; si cambia la fecha o la faena, se mueve a su carpeta
+    `AAAAMMDD_Faena`.
+  - Si se corrige la cuenca, la provincia o la comuna, la planilla queda
+    corregida, pero la etiqueta de la foto conserva los datos con que se tomó.
 - **Las correcciones se hacen en la app, no en la planilla.** Lo que se cambie
   directo en Google Sheets se pierde si esa colecta se vuelve a enviar desde el
   celular.

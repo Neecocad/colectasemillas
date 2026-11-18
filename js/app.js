@@ -11,7 +11,7 @@ import {
   MOMENTOS_COLECTA, ORIGENES_SEMILLA, ESPECIES, CUENCAS, TERRITORIO,
 } from './catalog.js';
 
-const VERSION = 'v6';
+const VERSION = 'v7';
 
 const $ = (id) => document.getElementById(id);
 const form = $('form-colecta');
@@ -207,11 +207,11 @@ async function tomarPunto() {
 // ---------- Fotografía con etiqueta ----------
 // La etiqueta se dibuja sobre los píxeles de la imagen (Canvas), no en los
 // metadatos EXIF, porque WhatsApp, Drive y otras apps suelen borrar los EXIF.
-// La foto original (sin etiqueta) se conserva para poder re-etiquetar: al
-// cambiar la ubicación o el punto, y al editar una colecta ya guardada.
-// `archivo` es la imagen original (Blob); puede faltar en colectas guardadas
-// antes de la v6, que solo tienen la foto ya etiquetada.
-let foto = null; // { archivo, tomada: Date, dataUrl, originalDataUrl, etiqueta }
+// Mientras se registra una colecta nueva, el archivo original queda en memoria
+// para poder re-etiquetar si cambian la ubicación o el punto antes de guardar.
+// Al editar una colecta guardada no hay archivo original: la foto ya
+// etiquetada se conserva tal cual (ver editar()).
+let foto = null; // { archivo, tomada: Date, dataUrl, etiqueta }
 
 function fechaHora(d) {
   const p = (n) => String(n).padStart(2, '0');
@@ -251,13 +251,7 @@ function reetiquetar() {
   if (foto && foto.archivo && punto) etiquetarFoto().catch(() => {});
 }
 
-function dataUrlABlob(dataUrl) {
-  const [cab, b64] = dataUrl.split(',');
-  const bin = atob(b64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new Blob([bytes], { type: (cab.match(/data:([^;]+)/) || [])[1] || 'image/jpeg' });
-}
+
 
 function cargarImagen(archivo) {
   return new Promise((resolve, reject) => {
@@ -270,7 +264,7 @@ function cargarImagen(archivo) {
 }
 
 async function etiquetarFoto() {
-  // Colecta antigua sin foto original: se deja la foto tal como está.
+  // Colecta en edición: la foto se conserva tal como está.
   if (!foto.archivo) return;
   const img = await cargarImagen(foto.archivo);
   const maxLado = 1600;
@@ -281,8 +275,6 @@ async function etiquetarFoto() {
   canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(img, 0, 0, w, h);
-  // Copia sin etiqueta, del mismo tamaño, para poder re-etiquetar más adelante.
-  if (!foto.originalDataUrl) foto.originalDataUrl = canvas.toDataURL('image/jpeg', 0.85);
 
   const textos = lineasEtiqueta();
   // Letra proporcional a la foto, achicada hasta que la línea más larga quepa,
@@ -327,7 +319,7 @@ async function alElegirFoto(e) {
       return;
     }
   }
-  foto = { archivo, tomada: new Date(), dataUrl: null, originalDataUrl: null };
+  foto = { archivo, tomada: new Date(), dataUrl: null };
   try {
     await etiquetarFoto();
   } catch (err) {
@@ -370,9 +362,6 @@ function validar() {
   if (campo('faena').value === OPCION_OTRO && !campo('faena_otro').value.trim()) marcar(campo('faena_otro'));
   if (cbCuenca.valor === OPCION_OTRO && !campo('cuenca_otro').value.trim()) marcar(campo('cuenca_otro'));
   if (!foto || !foto.dataUrl) marcar($('lbl-foto'));
-  else if (!foto.archivo && editando && cambioLaEtiqueta(editando)) {
-    marcar($('lbl-foto'), 'la foto es de una versión anterior y su etiqueta no se puede actualizar: vuelve a tomarla');
-  }
   return faltan;
 }
 
@@ -414,7 +403,7 @@ async function guardar(e) {
   // lo mismo (p. ej. al corregir solo la especie) la foto no se toca: así queda
   // idéntica y en Drive solo se renombra, sin volver a subirla.
   try {
-    if (foto.etiqueta !== lineasEtiqueta().join(' | ')) await etiquetarFoto();
+    if (!editando && foto.etiqueta !== lineasEtiqueta().join(' | ')) await etiquetarFoto();
   } catch (err) {
     toast('No se pudo preparar la foto: ' + err.message, 5000);
     return;
@@ -444,8 +433,6 @@ async function guardar(e) {
     cantidad_gramos: Number(campo('cantidad_gramos').value),
     comentarios: campo('comentarios').value.trim(),
     foto: foto.dataUrl,
-    foto_original: foto.originalDataUrl || null,
-    foto_etiqueta: foto.etiqueta || null,
     foto_tomada: foto.tomada.toISOString(),
   };
   // El nombre del archivo incluye la especie: si se corrige la especie, cambia
@@ -489,13 +476,13 @@ async function guardar(e) {
 // ---------- Editar una colecta guardada ----------
 // Se carga en el mismo formulario, con las mismas validaciones. Al guardar
 // reemplaza a la colecta original (no crea otra) y la deja pendiente.
+//
+// La foto y el punto GPS quedan BLOQUEADOS: las correcciones suelen hacerse
+// después, lejos del lugar de colecta (p. ej. corregir el nombre científico en
+// la oficina), donde ya no se puede volver a fotografiar el individuo ni tomar
+// su punto. Se conservan siempre tal como se registraron en terreno; si se
+// corrige la ubicación, la etiqueta de la foto mantiene los datos originales.
 let editando = null;
-
-// ¿Cambió algo de lo que aparece en la etiqueta de la foto?
-function cambioLaEtiqueta(r) {
-  return valorOtro(cbCuenca.valor, 'cuenca_otro') !== r.cuenca || cbProvincia.valor !== r.provincia ||
-    cbComuna.valor !== r.comuna || punto.este !== r.utm_este || punto.norte !== r.utm_norte;
-}
 
 // Pone un valor en una lista con "Otro": si no está entre las opciones, elige
 // "Otro (especificar)" y lo escribe en el campo de texto.
@@ -527,19 +514,12 @@ async function editar(reg) {
   punto = { huso: reg.huso, este: reg.utm_este, norte: reg.utm_norte, lat: reg.latitud, lon: reg.longitud, precision_m: reg.precision_m };
   campo('utm_este').value = reg.utm_este;
   campo('utm_norte').value = reg.utm_norte;
-  $('gps-info').textContent = `UTM ${reg.huso} (WGS84) · precisión ±${reg.precision_m} m (punto guardado)`;
-  $('btn-punto').textContent = '📍 Volver a tomar el punto';
-  foto = {
-    archivo: reg.foto_original ? dataUrlABlob(reg.foto_original) : null,
-    tomada: new Date(reg.foto_tomada),
-    dataUrl: reg.foto,
-    originalDataUrl: reg.foto_original || null,
-    etiqueta: reg.foto_etiqueta || null,
-  };
+  $('gps-info').textContent = `UTM ${reg.huso} (WGS84) · precisión ±${reg.precision_m} m`;
+  foto = { archivo: null, tomada: new Date(reg.foto_tomada), dataUrl: reg.foto };
   const prev = $('foto-preview');
   prev.querySelector('img').src = reg.foto;
   prev.classList.remove('hidden');
-  $('lbl-foto').textContent = '📷 Cambiar fotografía';
+  bloquearFotoYPunto(true);
   campo('semillas_de').value = reg.semillas_de;
   campo('cantidad_gramos').value = reg.cantidad_gramos;
   campo('comentarios').value = reg.comentarios || '';
@@ -549,6 +529,13 @@ async function editar(reg) {
   $('btn-guardar').textContent = '💾 Guardar corrección';
   $('btn-limpiar').textContent = 'Cancelar';
   irA('form');
+}
+
+// En edición: sin botones para tomar el punto, cambiar o quitar la foto.
+function bloquearFotoYPunto(si) {
+  ['btn-punto', 'lbl-foto', 'btn-quitar-foto'].forEach((id) => $(id).classList.toggle('hidden', si));
+  $('aviso-foto-edicion').classList.toggle('hidden', !si);
+  $('aviso-punto-edicion').classList.toggle('hidden', !si);
 }
 
 function cancelarEdicion() {
@@ -605,6 +592,7 @@ function limpiar() {
   $('aviso-edicion').classList.add('hidden');
   $('btn-guardar').textContent = '💾 Guardar colecta';
   $('btn-limpiar').textContent = 'Limpiar';
+  bloquearFotoYPunto(false);
   form.reset();
   form.querySelectorAll('.invalido').forEach((el) => el.classList.remove('invalido'));
   [cbRecolector, cbCientifico, cbComun, cbCuenca, cbRegion, cbProvincia, cbComuna].forEach((cb) => cb.fijar(''));

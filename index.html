@@ -98,6 +98,7 @@
           <legend>Punto de la muestra</legend>
           <button type="button" class="btn-gps" id="btn-punto">📍 Tomar punto de la muestra</button>
           <p class="hint" id="gps-info">Coordenadas UTM huso 19 Sur (WGS84).</p>
+          <p class="hint aviso-bloqueo hidden" id="aviso-punto-edicion">🔒 En una corrección el punto se conserva tal como se tomó en terreno.</p>
           <div class="grid-2">
             <div>
               <label for="f-este">Coordenada Este</label>
@@ -114,7 +115,8 @@
           <legend>Fotografía del individuo</legend>
           <label class="btn-foto" for="f-foto" id="lbl-foto" data-nombre="Fotografía del individuo">📷 Tomar o adjuntar fotografía</label>
           <input type="file" id="f-foto" accept="image/*" capture="environment" class="oculto" />
-          <p class="hint">La foto queda con una etiqueta: «Colecta de semillas», fecha y coordenadas.</p>
+          <p class="hint">La foto queda con una etiqueta: «Colecta de semillas», fecha, coordenadas, cuenca, provincia y comuna.</p>
+          <p class="hint aviso-bloqueo hidden" id="aviso-foto-edicion">🔒 En una corrección la foto se conserva tal como se tomó en terreno: no se puede quitar ni cambiar.</p>
           <div id="foto-preview" class="foto-preview hidden">
             <img alt="Vista previa de la fotografía con etiqueta" />
             <button type="button" class="btn-mini danger" id="btn-quitar-foto">Quitar foto</button>

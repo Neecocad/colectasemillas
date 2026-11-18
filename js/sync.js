@@ -44,8 +44,8 @@ export function resetUrl() {
 }
 
 // Lo que viaja: todos los campos de la colecta menos los internos del celular.
-// La foto original sin etiqueta tampoco: solo sirve para re-etiquetar en el
-// celular y duplicaría el peso de cada envío.
+// `foto_original` tampoco: solo existe en colectas guardadas con la v6 (que la
+// guardaba para re-etiquetar) y duplicaría el peso de cada envío.
 function paquete(reg, versionApp) {
   const { id, sincronizado, estado_sincronizacion, fecha_sincronizacion, error_sincronizacion, foto_url, foto_original, ...colecta } = reg;
   return { tipo: 'colecta_semillas', version_app: versionApp, colecta };

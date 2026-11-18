@@ -33,9 +33,10 @@ terreno, sin señal, en celulares. Sigue la estructura de
   re-dibuja al guardar).
 - UTM con huso **19S fijo** (ver README).
 - **Correcciones solo desde la app** (✏️): reemplaza la misma colecta (mismo
-  `record_id`) y la deja pendiente. La foto se re-etiqueta solo si cambia el
-  texto de la etiqueta; si no, queda idéntica y el script v3 solo la renombra
-  y/o mueve. Una foto distinta reemplaza a la anterior (que va a la papelera).
+  `record_id`) y la deja pendiente. **La foto y el punto GPS quedan bloqueados**
+  en edición (se corrige lejos del lugar: no se puede re-fotografiar ni re-tomar
+  el punto). La foto viaja idéntica, así que el script solo la renombra y/o
+  mueve en Drive: nunca se borra.
 - `js/catalogos-datos.js` es generado: se cambia la planilla en `datos/` y se
   corre `tools/generar_catalogos.py`, nunca se edita a mano.
 

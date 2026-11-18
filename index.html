@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#2f4f1b" />
+  <title>Colecta de semillas — Vivero Guayacanes</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-title">
+      <img src="icons/logo-guayacanes.jpg" alt="Vivero Guayacanes" class="logo" />
+      <div>
+        <h1>Colecta de semillas</h1>
+        <p class="subtitulo">Vivero Guayacanes</p>
+      </div>
+    </div>
+    <span id="net-status" class="net-status" title="Sin conexión">●</span>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-view="form">📝 Nueva colecta</button>
+    <button class="tab" data-view="list">📋 Colectas <span class="badge" id="count">0</span></button>
+    <button class="tab" data-view="export">⬇️ Exportar</button>
+  </nav>
+
+  <main>
+    <!-- ===================== NUEVA COLECTA ===================== -->
+    <section id="view-form" class="view active">
+      <form id="form-colecta" autocomplete="off" novalidate>
+        <fieldset>
+          <legend>Colecta</legend>
+          <label for="f-fecha">Fecha colecta</label>
+          <input type="date" id="f-fecha" data-f="fecha" data-nombre="Fecha colecta" />
+
+          <label for="f-recolector">Nombre de recolector</label>
+          <select id="f-recolector" data-f="recolector" data-nombre="Nombre de recolector"></select>
+          <div class="hidden" data-otro="recolector">
+            <label for="f-recolector-otro">Nombre de la persona recolectora</label>
+            <input type="text" id="f-recolector-otro" data-f="recolector_otro" data-nombre="Nombre de recolector (otro)" />
+          </div>
+
+          <label for="f-faena">Faena (en caso que corresponda)</label>
+          <select id="f-faena" data-f="faena" data-nombre="Faena"></select>
+          <div class="hidden" data-otro="faena">
+            <label for="f-faena-otro">Nombre de la faena</label>
+            <input type="text" id="f-faena-otro" class="mayusculas" data-f="faena_otro" data-nombre="Faena (otra)" />
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Especie</legend>
+          <label for="f-cientifico">Nombre científico</label>
+          <input type="text" id="f-cientifico" data-f="nombre_cientifico" data-nombre="Nombre científico" placeholder="Escribe para buscar…" />
+
+          <label for="f-comun">Nombre común</label>
+          <input type="text" id="f-comun" data-f="nombre_comun" data-nombre="Nombre común" placeholder="Escribe para buscar…" />
+          <p class="hint" id="hint-especie">Al elegir uno de los dos nombres, el otro se completa solo.</p>
+
+          <label for="f-habito">Hábito de crecimiento</label>
+          <select id="f-habito" data-f="habito" data-nombre="Hábito de crecimiento"></select>
+
+          <label for="f-estado">Estado identificación</label>
+          <select id="f-estado" data-f="estado_identificacion" data-nombre="Estado identificación"></select>
+
+          <label for="f-momento">Momento de colecta</label>
+          <select id="f-momento" data-f="momento_colecta" data-nombre="Momento de colecta"></select>
+        </fieldset>
+
+        <fieldset>
+          <legend>Ubicación</legend>
+          <label for="f-cuenca">Cuenca</label>
+          <input type="text" id="f-cuenca" data-f="cuenca" data-nombre="Cuenca" placeholder="Escribe para buscar…" />
+          <div class="hidden" data-otro="cuenca">
+            <label for="f-cuenca-otro">Nombre de la cuenca</label>
+            <input type="text" id="f-cuenca-otro" data-f="cuenca_otro" data-nombre="Cuenca (otra)" />
+          </div>
+
+          <label for="f-region">Región</label>
+          <input type="text" id="f-region" data-f="region" data-nombre="Región" placeholder="Escribe para buscar…" />
+
+          <label for="f-provincia">Provincia</label>
+          <input type="text" id="f-provincia" data-f="provincia" data-nombre="Provincia" placeholder="Primero elige la región" disabled />
+
+          <label for="f-comuna">Comuna</label>
+          <input type="text" id="f-comuna" data-f="comuna" data-nombre="Comuna" placeholder="Primero elige la provincia" disabled />
+        </fieldset>
+
+        <fieldset>
+          <legend>Punto de la muestra</legend>
+          <button type="button" class="btn-gps" id="btn-punto">📍 Tomar punto de la muestra</button>
+          <p class="hint" id="gps-info">Coordenadas UTM huso 19 Sur (WGS84).</p>
+          <div class="grid-2">
+            <div>
+              <label for="f-este">Coordenada Este</label>
+              <input type="text" id="f-este" data-f="utm_este" data-nombre="Coordenada Este (toma el punto)" readonly />
+            </div>
+            <div>
+              <label for="f-norte">Coordenada Norte</label>
+              <input type="text" id="f-norte" data-f="utm_norte" data-nombre="Coordenada Norte (toma el punto)" readonly />
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Fotografía del individuo</legend>
+          <label class="btn-foto" for="f-foto" id="lbl-foto" data-nombre="Fotografía del individuo">📷 Tomar o adjuntar fotografía</label>
+          <input type="file" id="f-foto" accept="image/*" capture="environment" class="oculto" />
+          <p class="hint">La foto queda con una etiqueta: «Colecta de semillas», fecha y coordenadas.</p>
+          <div id="foto-preview" class="foto-preview hidden">
+            <img alt="Vista previa de la fotografía con etiqueta" />
+            <button type="button" class="btn-mini danger" id="btn-quitar-foto">Quitar foto</button>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Semillas</legend>
+          <label for="f-semillas-de">Semillas colectadas de</label>
+          <select id="f-semillas-de" data-f="semillas_de" data-nombre="Semillas colectadas de"></select>
+
+          <label for="f-cantidad">Cantidad colectada (gramos)</label>
+          <input type="number" id="f-cantidad" data-f="cantidad_gramos" data-nombre="Cantidad colectada (gramos)" min="0" step="any" inputmode="decimal" />
+
+          <label for="f-comentarios">Comentarios</label>
+          <textarea id="f-comentarios" data-f="comentarios" data-nombre="Comentarios" rows="3"></textarea>
+        </fieldset>
+
+        <div id="errores" class="errores hidden" role="alert"></div>
+
+        <div class="actions">
+          <button type="button" class="btn-ghost" id="btn-limpiar">Limpiar</button>
+          <button type="submit" class="btn-primary">💾 Guardar colecta</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ===================== COLECTAS GUARDADAS ===================== -->
+    <section id="view-list" class="view">
+      <p class="hint">Colectas guardadas en este dispositivo.</p>
+      <div id="lista" class="list"></div>
+    </section>
+
+    <!-- ===================== EXPORTAR ===================== -->
+    <section id="view-export" class="view">
+      <fieldset>
+        <legend>Exportar</legend>
+        <p class="hint">Las colectas quedan guardadas en este celular. Mientras no esté conectada la sincronización con Google Drive, descárgalas desde aquí.</p>
+        <button type="button" class="btn-primary" id="btn-excel">📊 Descargar planilla Excel</button>
+        <button type="button" class="btn-ghost" id="btn-fotos">🖼️ Descargar fotos (.zip)</button>
+        <p class="hint">En la planilla, la columna de fotografía trae el nombre del archivo correspondiente dentro del .zip.</p>
+      </fieldset>
+      <p class="hint version">Versión <span id="version"></span></p>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script type="module" src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+    }
+  </script>
+</body>
+</html>

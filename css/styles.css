@@ -1,0 +1,128 @@
+/* Colores tomados del logo de Vivero Guayacanes. */
+:root {
+  --verde: #2f4f1b;
+  --verde-medio: #4d7a2a;
+  --verde-claro: #8fb65a;
+  --verde-50: #f2f7ea;
+  --gris: #5f6b5a;
+  --bg: #f7f8f4;
+  --card: #ffffff;
+  --borde: #dfe4d6;
+  --texto: #1c2416;
+  --peligro: #c62828;
+  --peligro-50: #fdecea;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--texto);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.app-header {
+  background: var(--verde);
+  color: #fff;
+  padding: 10px 16px;
+  padding-top: calc(10px + env(safe-area-inset-top));
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 20;
+}
+.header-title { display: flex; align-items: center; gap: 12px; }
+.app-header h1 { font-size: 1.1rem; margin: 0; }
+.subtitulo { margin: 2px 0 0; font-size: .8rem; opacity: .85; }
+.logo { height: 48px; width: auto; background: #fff; border-radius: 8px; padding: 3px; display: block; }
+.net-status { color: #f87171; font-size: 1.3rem; }
+.net-status.online { color: #bef264; }
+
+.tabs { display: flex; background: var(--card); border-bottom: 1px solid var(--borde); position: sticky; top: calc(68px + env(safe-area-inset-top)); z-index: 19; }
+.tab {
+  flex: 1; padding: 12px 4px; border: none; background: none;
+  font-size: .85rem; color: var(--gris); border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap;
+}
+.tab.active { color: var(--verde); border-bottom-color: var(--verde); font-weight: 600; }
+.badge { background: var(--verde-medio); color: #fff; border-radius: 10px; padding: 1px 7px; font-size: .75rem; }
+
+main { padding: 14px; max-width: 640px; margin: 0 auto; }
+.view { display: none; }
+.view.active { display: block; }
+
+fieldset { border: 1px solid var(--borde); border-radius: 12px; margin: 0 0 14px; padding: 14px; background: var(--card); min-width: 0; }
+legend { font-weight: 700; color: var(--verde); padding: 0 6px; }
+
+label { display: block; font-size: .87rem; color: #334128; margin: 12px 0 5px; font-weight: 600; }
+fieldset > label:first-of-type { margin-top: 2px; }
+input, select, textarea {
+  width: 100%; padding: 11px; font-size: 1rem; border: 1px solid var(--borde);
+  border-radius: 9px; background: #fff; color: var(--texto); font-family: inherit;
+}
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--verde-claro); border-color: var(--verde-claro); }
+input[readonly] { background: #f1f3ee; color: #44513b; font-weight: 600; }
+input:disabled { background: #f1f3ee; color: #9aa394; }
+textarea { resize: vertical; }
+.mayusculas { text-transform: uppercase; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.hint { font-size: .8rem; color: var(--gris); margin: 6px 0 0; }
+.hint.warn { color: #9a5b00; font-weight: 600; }
+.hidden { display: none !important; }
+/* Oculto a la vista pero accesible (el <label> abre la cámara). */
+.oculto { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+
+/* Campo con dato faltante o inválido. */
+.invalido { border-color: var(--peligro) !important; background: var(--peligro-50) !important; }
+.errores { background: var(--peligro-50); border: 1px solid #f5c2bd; color: #7f1d1d; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; font-size: .9rem; }
+.errores ul { margin: 6px 0 0; padding-left: 20px; }
+
+/* ---------- Lista desplegable con búsqueda ---------- */
+.combo { position: relative; }
+.combo input { padding-right: 40px; }
+.combo-btn {
+  position: absolute; right: 1px; top: 1px; bottom: 1px; width: 38px; border: none; background: transparent;
+  cursor: pointer; border-radius: 0 9px 9px 0;
+}
+.combo-btn::after {
+  content: ''; position: absolute; left: 50%; top: 50%; margin: -3px 0 0 -5px;
+  border: 5px solid transparent; border-top-color: var(--gris);
+}
+.combo-lista {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30;
+  max-height: 260px; overflow-y: auto; margin: 0; padding: 4px 0; list-style: none;
+  background: #fff; border: 1px solid var(--borde); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
+}
+.combo-lista li { padding: 10px 12px; cursor: pointer; font-size: .95rem; }
+.combo-lista li.activo, .combo-lista li:hover { background: var(--verde-50); }
+.combo-lista li.elegido { font-weight: 700; color: var(--verde); }
+.combo-lista li.combo-vacio { color: var(--gris); font-style: italic; cursor: default; background: none; font-size: .85rem; }
+
+/* ---------- GPS y foto ---------- */
+.btn-gps, .btn-foto {
+  display: block; width: 100%; padding: 13px 14px; border: 1px solid var(--verde-medio); background: var(--verde-50); color: var(--verde);
+  border-radius: 10px; font-size: 1rem; font-weight: 700; cursor: pointer; text-align: center; margin: 0;
+}
+.btn-gps:disabled { opacity: .6; }
+.foto-preview { margin-top: 10px; }
+.foto-preview img { width: 100%; border-radius: 9px; border: 1px solid var(--borde); display: block; }
+.foto-preview .btn-mini { margin-top: 6px; width: 100%; }
+
+.btn-mini { padding: 9px 12px; border: 1px solid var(--borde); background: #fff; border-radius: 9px; font-size: 1rem; cursor: pointer; }
+.btn-mini.danger { border-color: #f5c2bd; color: var(--peligro); }
+
+.actions { display: flex; gap: 10px; margin-top: 6px; }
+.btn-primary { flex: 2; padding: 15px; background: var(--verde); color: #fff; border: none; border-radius: 11px; font-size: 1.05rem; font-weight: 600; cursor: pointer; }
+.btn-ghost { flex: 1; padding: 13px; background: #fff; border: 1px solid var(--borde); border-radius: 11px; font-size: 1rem; cursor: pointer; color: #334128; }
+#view-export .btn-primary, #view-export .btn-ghost { width: 100%; margin-top: 12px; display: block; }
+
+/* ---------- Lista de colectas ---------- */
+.list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.card { background: var(--card); border: 1px solid var(--borde); border-radius: 11px; padding: 10px; display: flex; align-items: center; gap: 10px; }
+.card-foto { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; flex: none; }
+.card-main { flex: 1; font-size: .95rem; min-width: 0; }
+.card-sub { font-size: .8rem; color: var(--gris); margin-top: 3px; }
+.card-actions { display: flex; flex-direction: column; gap: 6px; }
+.empty { text-align: center; color: var(--gris); margin-top: 40px; }
+.version { text-align: center; }
+
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1c2416; color: #fff; padding: 12px 18px; border-radius: 10px; font-size: .9rem; opacity: 0; pointer-events: none; transition: .25s; z-index: 100; max-width: 90%; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }

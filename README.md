@@ -17,7 +17,7 @@ compartida VIVERO 2026, y las fotos quedan en Drive ordenadas por fecha.
 
 ```
 Celular ──▶ Apps Script (Web App /exec) ──▶ BD_Colectasemillas, hoja "Colectas"
-                                         └─▶ BD_Colecta de semillas / Fotografías / AAAAMMDD_Faena /
+                                         └─▶ BD_Colecta de semillas / Fotografías / AAAAMMDD_Faena_Recolector /
 ```
 
 - **Instalación del script:** [`apps-script/COMO-INSTALAR.md`](apps-script/COMO-INSTALAR.md).
@@ -29,8 +29,8 @@ Celular ──▶ Apps Script (Web App /exec) ──▶ BD_Colectasemillas, hoja
 - **Sin duplicados:** la fila se busca por "ID colecta" y la foto por su nombre
   dentro de su carpeta. Reenviar actualiza la fila existente en vez de crear
   otra.
-- **Fotos por fecha y faena:** se guardan en `Fotografías/AAAAMMDD_Faena`, según
-  la **fecha de la colecta** y su faena, por ejemplo `20261118_Santiago Solar`.
+- **Fotos por fecha, faena y recolector:** se guardan en `Fotografías/AAAAMMDD_Faena_Recolector`, según
+  la **fecha de la colecta**, su faena y quién la colectó (así dos personas de la misma faena el mismo día no comparten carpeta), por ejemplo `20261118_Santiago Solar`.
   La fecha va primero para que, al ordenar por nombre, las carpetas queden en
   orden cronológico. En la planilla, el nombre de la foto es
   un enlace al archivo.
@@ -52,11 +52,17 @@ Celular ──▶ Apps Script (Web App /exec) ──▶ BD_Colectasemillas, hoja
     del lugar (por ejemplo, corregir el nombre científico en la oficina), donde
     ya no se puede fotografiar el individuo ni tomar su punto. Volver a tomar el
     punto ahí registraría la ubicación de la oficina.
-  - **En Drive, la foto nunca se borra:** si cambia la especie, solo se
-    renombra; si cambia la fecha o la faena, se mueve a su carpeta
-    `AAAAMMDD_Faena`.
-  - Si se corrige la cuenca, la provincia o la comuna, la planilla queda
-    corregida, pero la etiqueta de la foto conserva los datos con que se tomó.
+  - **La etiqueta sí se actualiza:** si se corrige la especie, la cuenca, la
+    provincia o la comuna, la app vuelve a dibujar la etiqueta sobre la misma
+    imagen original (por eso guarda una copia sin etiqueta). En Drive, la foto
+    con la etiqueta nueva reemplaza a la anterior, que va a la papelera de Drive
+    (se puede recuperar durante 30 días). Es siempre la misma imagen de
+    terreno: solo cambia el texto.
+  - Si cambia la fecha, la faena o el recolector, la foto se mueve a su carpeta
+    `AAAAMMDD_Faena_Recolector`. Si cambia solo algo que no va en la etiqueta
+    (por ejemplo la cantidad), la foto no se toca.
+  - Las colectas guardadas con la v7 no tienen la copia sin etiqueta: en esas,
+    la foto queda tal cual.
 - **Las correcciones se hacen en la app, no en la planilla.** Lo que se cambie
   directo en Google Sheets se pierde si esa colecta se vuelve a enviar desde el
   celular.
@@ -124,14 +130,15 @@ otras apps borran) e incluye:
 
 ```
 Colecta de semillas
+Especie: Sophora macrocarpa
 Fecha: 18-11-2026 14:32
 UTM 19S: 346564 E · 6299025 N
 Cuenca: Rio Maipo (057)
 Provincia: Cordillera · Comuna: Pirque
 ```
 
-Si la foto se toma antes de elegir cuenca, provincia o comuna, la etiqueta
-muestra "—" en esos datos y se vuelve a dibujar sola cuando se completan, y
+Si la foto se toma antes de elegir la especie, la cuenca, la provincia o la
+comuna, la etiqueta muestra "—" en esos datos y se vuelve a dibujar sola cuando se completan, y
 también al guardar. Las líneas muy largas, como algunos nombres de cuenca, se
 cortan en dos.
 

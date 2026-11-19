@@ -2,8 +2,8 @@
  * Colecta de semillas — Vivero Guayacanes · Web App de sincronización.
  *
  * Recibe las colectas que envía la app del celular (botón "Sincronizar") y:
- *   1. guarda la fotografía en la unidad compartida, en una carpeta por fecha
- *      de colecta y faena:  BD_Colecta de semillas / Fotografías / AAAAMMDD_Faena /
+ *   1. guarda la fotografía en la unidad compartida, en una carpeta por fecha,
+ *      faena y recolector:  BD_Colecta de semillas / Fotografías / AAAAMMDD_Faena_Recolector /
  *   2. escribe (o actualiza) una fila por colecta en la hoja "Colectas" de la
  *      planilla BD_Colectasemillas.
  *
@@ -17,7 +17,7 @@
  *
  * Correcciones (colectas editadas en la app): la fila se actualiza en su lugar
  * y la foto anterior se reutiliza a partir del enlace de esa fila: si solo
- * cambió la especie, la fecha o la faena, se renombra y/o se mueve a su nueva
+ * cambió la especie, la fecha, la faena o el recolector, se renombra y/o se mueve a su nueva
  * carpeta; si la imagen cambió (otra foto o nueva etiqueta), se sube la nueva y
  * la anterior va a la papelera. Nunca quedan dos fotos para una colecta.
  *
@@ -37,12 +37,12 @@
 const SPREADSHEET_ID = '1CuRf2aO6EklG0IUOTHKdSmF0IP4IS1-1iw2PqtNxIeU';
 
 // Carpeta "BD_Colecta de semillas" (unidad compartida VIVERO 2026). Dentro se
-// crea sola la carpeta de fotografías y, dentro de ella, una por fecha y faena.
+// crea sola la carpeta de fotografías y, dentro de ella, una por fecha, faena y recolector.
 const CARPETA_BD_ID = '1oBUJN5G3MpZLwHg74JM0deOOyUY6w7hd';
 const CARPETA_FOTOS = 'Fotografías';
 
 const HOJA = 'Colectas';
-const VERSION_SCRIPT = 'v3';
+const VERSION_SCRIPT = 'v4';
 
 // Columnas de la hoja. Las 18 primeras son las de la ficha de colecta, en el
 // mismo orden que el Excel de la app (js/catalog.js → COLUMNAS). Las que siguen
@@ -96,7 +96,7 @@ function doPost(e) {
 
     const sh = _hoja();
     const filaExistente = _filaDeId(sh, c.record_id);
-    const carpeta = _carpetaDelDia(c.fecha, c.faena);
+    const carpeta = _carpetaDelDia(c.fecha, c.faena, c.recolector);
     const anterior = filaExistente ? _fotoDeFila(sh, filaExistente) : null;
     const foto = _guardarFoto(carpeta, c.foto, c.foto_nombre, anterior);
     const fila = _escribirFila(sh, filaExistente, c, payload.version_app, foto.url);
@@ -190,16 +190,21 @@ function _filaDeId(sh, id) {
 
 // ---------- Fotos ----------
 
-// BD_Colecta de semillas / Fotografías / AAAAMMDD_Faena  (p. ej. 20261118_Santiago Solar).
+// BD_Colecta de semillas / Fotografías / AAAAMMDD_Faena_Recolector
+// (p. ej. 20261119_Canalistas_Vera Collao Patricia Isabel).
 // La fecha va primero para que, ordenadas por nombre, las carpetas queden en
-// orden cronológico; la faena permite ubicar de un vistazo dónde se colectó.
-function _carpetaDelDia(fechaIso, faena) {
+// orden cronológico; la faena y el recolector distinguen a dos personas que
+// colectan el mismo día en la misma faena.
+function _carpetaDelDia(fechaIso, faena, recolector) {
   const base = DriveApp.getFolderById(CARPETA_BD_ID);
   const fotos = _subcarpeta(base, CARPETA_FOTOS);
   const dia = String(fechaIso || '').replace(/-/g, '') || 'sin_fecha';
-  // Se quitan caracteres que confunden en nombres de carpeta (/ \ : * ? " < > |).
-  const nombreFaena = String(faena || 'Sin faena').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim();
-  return _subcarpeta(fotos, dia + '_' + nombreFaena);
+  return _subcarpeta(fotos, [dia, _limpio(faena, 'Sin faena'), _limpio(recolector, 'Sin recolector')].join('_'));
+}
+
+// Texto apto para un nombre de carpeta: sin / \ : * ? " < > | ni espacios repetidos.
+function _limpio(texto, siVacio) {
+  return String(texto || siVacio).replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim() || siVacio;
 }
 
 function _subcarpeta(padre, nombre) {

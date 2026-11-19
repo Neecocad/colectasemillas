@@ -14,7 +14,7 @@ planilla y guarda la foto en Drive.
 
 ```
 Celular ──▶ https://script.google.com/…/exec ──▶ BD_Colectasemillas (hoja "Colectas")
-                                              └─▶ BD_Colecta de semillas / Fotografías / AAAAMMDD_Faena /
+                                              └─▶ BD_Colecta de semillas / Fotografías / AAAAMMDD_Faena_Recolector /
 ```
 
 Hay **dos copias** del script, y no están conectadas entre sí:
@@ -111,8 +111,8 @@ Así la URL `/exec` se mantiene y no hay que tocar nada en los celulares.
 1. En un celular, guarda una colecta de prueba y presiona **Sincronizar**.
 2. En la planilla debe aparecer la hoja **Colectas**, con una fila. La celda de
    fotografía debe ser un enlace a la foto.
-3. En Drive: **BD_Colecta de semillas → Fotografías → AAAAMMDD_Faena** (la fecha
-   y la faena de la colecta) debe contener la foto con su etiqueta.
+3. En Drive: **BD_Colecta de semillas → Fotografías → AAAAMMDD_Faena_Recolector** (la fecha,
+   la faena y el recolector de la colecta) debe contener la foto con su etiqueta.
 4. Vuelve a enviar la misma colecta (en la lista, botón ↻ y después
    Sincronizar). La fila debe actualizarse **sin duplicarse**, y la foto
    tampoco debe duplicarse.

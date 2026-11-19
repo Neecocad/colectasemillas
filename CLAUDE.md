@@ -29,14 +29,17 @@ terreno, sin señal, en celulares. Sigue la estructura de
   el nombre común es único (hay nombres comunes compartidos por varias especies).
 - Listas encadenadas Región → Provincia → Comuna desde `datos/Regiones_provincias_comunas.xlsx`.
 - La etiqueta de la foto va **dibujada sobre los píxeles** (Canvas), no en EXIF:
-  «Colecta de semillas», fecha, coordenadas, cuenca, provincia y comuna (se
-  re-dibuja al guardar).
+  «Colecta de semillas», especie (nombre científico), fecha, coordenadas,
+  cuenca, provincia y comuna. Se guarda la imagen original sin etiqueta
+  (`foto_original`) para re-etiquetar al guardar y al corregir.
 - UTM con huso **19S fijo** (ver README).
 - **Correcciones solo desde la app** (✏️): reemplaza la misma colecta (mismo
   `record_id`) y la deja pendiente. **La foto y el punto GPS quedan bloqueados**
   en edición (se corrige lejos del lugar: no se puede re-fotografiar ni re-tomar
-  el punto). La foto viaja idéntica, así que el script solo la renombra y/o
-  mueve en Drive: nunca se borra.
+  el punto). Solo se re-dibuja su etiqueta si cambia lo que dice (p. ej. la
+  especie); entonces el script sube la nueva y manda la anterior a la papelera
+  (misma imagen, otro texto). Si la etiqueta no cambia, la foto viaja idéntica
+  y el script solo la renombra y/o mueve.
 - `js/catalogos-datos.js` es generado: se cambia la planilla en `datos/` y se
   corre `tools/generar_catalogos.py`, nunca se edita a mano.
 
@@ -47,7 +50,7 @@ terreno, sin señal, en celulares. Sigue la estructura de
   `js/app.js`.
 - Sincronización: `js/sync.js` envía **una colecta por llamada** (con foto) a
   `apps-script/Codigo.gs`; upsert por "ID colecta", foto idempotente por nombre,
-  fotos en `BD_Colecta de semillas/Fotografías/AAAAMMDD_Faena` (fecha de colecta + faena).
+  fotos en `BD_Colecta de semillas/Fotografías/AAAAMMDD_Faena_Recolector` (fecha de colecta + faena + recolector).
 - Cambiar `apps-script/Codigo.gs` no basta: hay que pegarlo en el editor de
   Google y publicar una **nueva versión** de la implementación existente
   (nunca una implementación nueva: cambia la URL). Recordarlo siempre.
